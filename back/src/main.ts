@@ -14,7 +14,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:5173', // URL del frontend local (Vite)
       'https://olimpo-gym.onrender.com', // URL del frontend en producción (ajusta según tu dominio)
-      'https://olimpo-web.vercel.app', // URL del frontend en Vercel
+      'https://olimpo-web-xpf8.vercel.app', // URL del frontend en Vercel
       'https://olimpoweb.vercel.app', // Variante del dominio en Vercel
       /\.olimpo-gym\.com$/, // Dominios personalizados futuros
     ],
