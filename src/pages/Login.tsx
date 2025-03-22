@@ -16,33 +16,77 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({
+      console.log('Intentando iniciar sesión con:', formData.email);
+      
+      // Intentar iniciar sesión
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password
       });
 
-      if (authError) throw authError;
+      if (error) {
+        console.error('Error de autenticación:', error);
+        throw error;
+      }
 
-      if (user) {
-        // Verificar si el usuario es admin
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
+      console.log('Sesión iniciada correctamente:', data);
 
+      if (data.user) {
         toast.success('¡Inicio de sesión exitoso!');
         
-        // Redirigir según el rol
-        if (profile?.is_admin) {
-          navigate('/admin');
-        } else {
-          navigate('/dashboard');
-        }
+        // Esperar un momento para que el contexto de autenticación se actualice
+        setTimeout(async () => {
+          try {
+            // Verificar si el perfil existe
+            const { data: profileCheck, error: checkError } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('id', data.user.id);
+              
+            console.log('Verificación de perfil:', profileCheck, checkError);
+            
+            // Si no existe el perfil, crearlo
+            if (checkError || !profileCheck || profileCheck.length === 0) {
+              console.log('Creando perfil para el usuario:', data.user.id);
+              const { error: insertError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: data.user.id,
+                  email: data.user.email,
+                  first_name: '',
+                  last_name: '',
+                  is_admin: false
+                });
+                
+              if (insertError) {
+                console.error('Error al crear perfil:', insertError);
+              }
+            }
+            
+            // Verificar si el usuario es admin
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('is_admin')
+              .eq('id', data.user.id)
+              .single();
+
+            console.log('Perfil obtenido:', profile, profileError);
+
+            // Redirigir según el rol
+            if (profile?.is_admin) {
+              navigate('/admin');
+            } else {
+              navigate('/dashboard');
+            }
+          } catch (profileCheckError) {
+            console.error('Error verificando perfil:', profileCheckError);
+            navigate('/dashboard');
+          }
+        }, 1000); // Esperar 1 segundo
       }
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error al iniciar sesión');
+      console.error('Error de inicio de sesión:', error);
+      toast.error('Credenciales de inicio de sesión inválidas');
     } finally {
       setLoading(false);
     }

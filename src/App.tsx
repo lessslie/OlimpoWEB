@@ -7,6 +7,8 @@ import Contact from './pages/Contact';
 import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Memberships from './pages/Memberships';
+import TestAuth from './pages/TestAuth';
+import Location from './pages/Location';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { AuthProvider } from './contexts/AuthContext';
@@ -26,6 +28,8 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/memberships" element={<Memberships />} />
+              <Route path="/location" element={<Location />} />
+              <Route path="/test-auth" element={<TestAuth />} />
 
               {/* Rutas protegidas */}
               <Route path="/dashboard" element={<UserDashboard />} />

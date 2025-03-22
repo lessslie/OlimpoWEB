@@ -23,13 +23,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     checkUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('Estado de autenticación cambiado:', session);
       if (session?.user) {
-        loadUserProfile(session.user.id);
+        await loadUserProfile(session.user.id);
       } else {
         setUser(null);
         setIsAdmin(false);
       }
+      setLoading(false);
     });
 
     return () => {
@@ -39,7 +41,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const checkUser = async () => {
     try {
+      console.log('Verificando usuario actual...');
       const { data: { user: authUser } } = await supabase.auth.getUser();
+      console.log('Usuario actual:', authUser);
       if (authUser) {
         await loadUserProfile(authUser.id);
       }
@@ -52,17 +56,80 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loadUserProfile = async (userId: string) => {
     try {
+      console.log('Cargando perfil para usuario:', userId);
+      
+      // Primero verificamos si el perfil existe
+      const { data: profileExists, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId);
+
+      console.log('Verificación de perfil:', profileExists, checkError);
+
+      if (checkError) {
+        console.error('Error checking profile existence:', checkError);
+        return;
+      }
+
+      // Si el perfil no existe, lo creamos
+      if (!profileExists || profileExists.length === 0) {
+        console.log('Perfil no encontrado, creando uno nuevo...');
+        const { data: authUser } = await supabase.auth.getUser();
+        if (!authUser.user) {
+          console.error('No se pudo obtener el usuario autenticado');
+          return;
+        }
+
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            email: authUser.user.email,
+            first_name: '',
+            last_name: '',
+            is_admin: false
+          });
+
+        if (insertError) {
+          console.error('Error creating profile:', insertError);
+          return;
+        }
+        
+        console.log('Perfil creado exitosamente');
+      }
+
+      // Ahora cargamos el perfil
+      console.log('Obteniendo datos del perfil...');
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
+      console.log('Datos del perfil obtenidos:', profile, error);
+
+      if (error) {
+        console.error('Error loading profile:', error);
+        return;
+      }
 
       if (profile) {
-        setUser(profile);
-        setIsAdmin(profile.is_admin);
+        // Adaptamos el perfil al formato UserProfile
+        const userProfile: UserProfile = {
+          id: profile.id,
+          email: profile.email,
+          full_name: profile.first_name && profile.last_name 
+            ? `${profile.first_name} ${profile.last_name}` 
+            : undefined,
+          phone: profile.phone,
+          is_admin: profile.is_admin || false,
+          created_at: profile.created_at,
+          updated_at: profile.updated_at
+        };
+        
+        console.log('Perfil adaptado:', userProfile);
+        setUser(userProfile);
+        setIsAdmin(profile.is_admin || false);
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
@@ -73,9 +140,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      console.log('Cerrando sesión...');
       await supabase.auth.signOut();
       setUser(null);
       setIsAdmin(false);
+      console.log('Sesión cerrada exitosamente');
     } catch (error) {
       console.error('Error signing out:', error);
     }

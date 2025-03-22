@@ -45,3 +45,18 @@ CREATE TRIGGER update_profiles_updated_at
     BEFORE UPDATE ON profiles
     FOR EACH ROW
     EXECUTE PROCEDURE update_updated_at_column();
+
+-- Create a function to handle new user signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, first_name, last_name, is_admin)
+  VALUES (new.id, new.email, '', '', false);
+  RETURN new;
+END;
+$$ language plpgsql security definer;
+
+-- Create a trigger to automatically create profile when user signs up
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
