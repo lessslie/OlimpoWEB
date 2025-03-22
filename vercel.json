@@ -2,8 +2,8 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/front/$1" }
   ],
-  "buildCommand": "cd front && yarn install && yarn build",
+  "buildCommand": "chmod +x ./vercel-build.sh && ./vercel-build.sh",
   "outputDirectory": "front/dist",
-  "installCommand": "cd front && yarn install",
+  "installCommand": "echo 'Skipping default install'",
   "framework": "vite"
 }
