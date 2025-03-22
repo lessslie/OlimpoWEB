@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/front/$1" }
+  ],
+  "buildCommand": "cd front && npm install && npm run build",
+  "outputDirectory": "front/dist",
+  "installCommand": "cd front && npm install",
+  "framework": "vite"
+}
