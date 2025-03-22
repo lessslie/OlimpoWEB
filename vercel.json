@@ -1,9 +1,7 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/front/$1" }
-  ],
-  "buildCommand": "chmod +x ./vercel-build.sh && ./vercel-build.sh",
+  "buildCommand": "cd front && npm install && npm run build",
   "outputDirectory": "front/dist",
-  "installCommand": "echo 'Skipping default install'",
-  "framework": "vite"
+  "installCommand": "cd front && npm install",
+  "framework": "vite",
+  "rootDirectory": "front"
 }
