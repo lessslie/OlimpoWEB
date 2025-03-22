@@ -2,8 +2,8 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/front/$1" }
   ],
-  "buildCommand": "cd front && npm install && npm run build",
+  "buildCommand": "cd front && npm install --no-optional --ignore-scripts --platform=linux --arch=x64 && npm run build",
   "outputDirectory": "front/dist",
-  "installCommand": "cd front && npm install",
+  "installCommand": "cd front && npm install --no-optional --ignore-scripts --platform=linux --arch=x64",
   "framework": "vite"
 }
