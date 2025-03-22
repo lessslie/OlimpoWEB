@@ -22,15 +22,15 @@ export class RegisterDto {
   @IsEmail({}, { message: 'Formato de email inválido' })
   email: string;
 
-  @ApiProperty({ example: 'Contraseña123!' })
+  @ApiProperty({ example: 'Abc12!' })
   @IsNotEmpty({ message: 'La contraseña es requerida' })
-  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/, {
+  @MinLength(5, { message: 'La contraseña debe tener al menos 5 caracteres' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{5,}$/, {
     message: 'La contraseña debe contener al menos una letra mayúscula, una minúscula y un número',
   })
   password: string;
 
-  @ApiProperty({ example: 'Contraseña123!' })
+  @ApiProperty({ example: 'Abc12!' })
   @IsNotEmpty({ message: 'La confirmación de contraseña es requerida' })
   confirmPassword: string;
 }
