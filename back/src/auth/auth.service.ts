@@ -1,33 +1,21 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { UsersService, User } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
-  private supabase: SupabaseClient;
-
-  constructor(private configService: ConfigService) {
-    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
-    const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_KEY');
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase credentials not found in environment variables');
-    }
-    
-    this.supabase = createClient(supabaseUrl, supabaseKey);
-  }
+  constructor(
+    private usersService: UsersService,
+    private jwtService: JwtService,
+  ) {}
 
   async register(registerDto: RegisterDto) {
     try {
       // Verificar si el usuario ya existe
-      const { data: existingUser, error: checkError } = await this.supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', registerDto.email)
-        .single();
-
+      const existingUser = await this.usersService.findByEmail(registerDto.email);
       if (existingUser) {
         throw new HttpException(
           'Este email ya está registrado',
@@ -35,35 +23,33 @@ export class AuthService {
         );
       }
 
-      // Registrar usuario en Supabase Auth
-      const { data, error } = await this.supabase.auth.signUp({
+      // Hash de la contraseña
+      const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+
+      // Crear usuario
+      const user = await this.usersService.create({
         email: registerDto.email,
-        password: registerDto.password,
-        options: {
-          data: {
-            first_name: registerDto.first_name,
-            last_name: registerDto.last_name,
-            phone: registerDto.phone,
-          },
-        },
+        password: hashedPassword,
+        first_name: registerDto.first_name,
+        last_name: registerDto.last_name,
+        phone: registerDto.phone,
+        is_admin: false, // Agregamos esta propiedad que faltaba
       });
 
-      if (error) {
-        throw new HttpException(
-          error.message || 'Error al registrar usuario',
-          HttpStatus.INTERNAL_SERVER_ERROR
-        );
-      }
+      // Generar token JWT
+      const token = this.generateToken(user);
 
       return {
         message: 'Usuario registrado correctamente',
         user: {
-          id: data.user?.id,
-          email: data.user?.email,
-          first_name: registerDto.first_name,
-          last_name: registerDto.last_name,
-          phone: registerDto.phone,
+          id: user.id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone,
+          is_admin: user.is_admin,
         },
+        token,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -78,44 +64,38 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     try {
-      const { data, error } = await this.supabase.auth.signInWithPassword({
-        email: loginDto.email,
-        password: loginDto.password,
-      });
-
-      if (error) {
+      // Buscar usuario por email
+      const user = await this.usersService.findByEmail(loginDto.email);
+      if (!user) {
         throw new HttpException(
           'Credenciales inválidas',
           HttpStatus.UNAUTHORIZED
         );
       }
 
-      // Obtener información del perfil
-      const { data: profileData, error: profileError } = await this.supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Error al obtener perfil:', profileError);
+      // Verificar contraseña
+      const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+      if (!isPasswordValid) {
+        throw new HttpException(
+          'Credenciales inválidas',
+          HttpStatus.UNAUTHORIZED
+        );
       }
+
+      // Generar token JWT
+      const token = this.generateToken(user);
 
       return {
         message: 'Inicio de sesión exitoso',
         user: {
-          id: data.user.id,
-          email: data.user.email,
-          first_name: profileData?.first_name || data.user.user_metadata?.first_name,
-          last_name: profileData?.last_name || data.user.user_metadata?.last_name,
-          phone: profileData?.phone || data.user.user_metadata?.phone,
-          is_admin: profileData?.is_admin || false,
+          id: user.id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone,
+          is_admin: user.is_admin,
         },
-        session: {
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          expires_at: data.session.expires_at,
-        },
+        token,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -130,44 +110,43 @@ export class AuthService {
 
   async validateToken(token: string) {
     try {
-      const { data, error } = await this.supabase.auth.getUser(token);
-
-      if (error) {
+      const payload = this.jwtService.verify(token);
+      const user = await this.usersService.findOne(payload.sub);
+      
+      if (!user) {
         throw new HttpException(
           'Token inválido o expirado',
           HttpStatus.UNAUTHORIZED
         );
       }
 
-      // Obtener información del perfil
-      const { data: profileData, error: profileError } = await this.supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Error al obtener perfil:', profileError);
-      }
-
       return {
         user: {
-          id: data.user.id,
-          email: data.user.email,
-          first_name: profileData?.first_name || data.user.user_metadata?.first_name,
-          last_name: profileData?.last_name || data.user.user_metadata?.last_name,
-          phone: profileData?.phone || data.user.user_metadata?.phone,
-          is_admin: profileData?.is_admin || false,
+          id: user.id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone,
+          is_admin: user.is_admin,
         },
       };
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
       throw new HttpException(
         'Token inválido o expirado',
         HttpStatus.UNAUTHORIZED
       );
     }
+  }
+
+  private generateToken(user: User) {
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      is_admin: user.is_admin,
+    };
+
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
   }
 }

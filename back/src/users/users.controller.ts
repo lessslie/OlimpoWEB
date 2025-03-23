@@ -1,9 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
+import { UsersService, User } from './users.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('users')
 @Controller('users')
@@ -12,11 +10,12 @@ export class UsersController {
 
   @Post()
   @ApiOperation({ summary: 'Crear un nuevo usuario' })
-  @ApiResponse({ status: 201, description: 'Usuario creado correctamente', type: User })
+  @ApiResponse({ status: 201, description: 'Usuario creado correctamente' })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
   @ApiResponse({ status: 409, description: 'El usuario ya existe' })
   @ApiBearerAuth()
-  async create(@Body() createUserDto: CreateUserDto) {
+  @UseGuards(JwtAuthGuard)
+  async create(@Body() createUserDto: any) {
     try {
       return await this.usersService.create(createUserDto);
     } catch (error) {
@@ -40,84 +39,52 @@ export class UsersController {
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los usuarios' })
-  @ApiResponse({ status: 200, description: 'Lista de usuarios', type: [User] })
+  @ApiResponse({ status: 200, description: 'Lista de usuarios' })
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async findAll() {
     return await this.usersService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un usuario por ID' })
-  @ApiResponse({ status: 200, description: 'Usuario encontrado', type: User })
+  @ApiResponse({ status: 200, description: 'Usuario encontrado' })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async findOne(@Param('id') id: string) {
-    try {
-      return await this.usersService.findOne(id);
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      
-      throw new HttpException(
-        'Usuario no encontrado',
-        HttpStatus.NOT_FOUND
-      );
+    const user = await this.usersService.findOne(id);
+    if (!user) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
     }
+    return user;
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un usuario' })
-  @ApiResponse({ status: 200, description: 'Usuario actualizado', type: User })
+  @ApiResponse({ status: 200, description: 'Usuario actualizado correctamente' })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   @ApiBearerAuth()
-  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    try {
-      return await this.usersService.update(id, updateUserDto);
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      
-      if (error.message && error.message.includes('not found')) {
-        throw new HttpException(
-          'Usuario no encontrado',
-          HttpStatus.NOT_FOUND
-        );
-      }
-      
-      throw new HttpException(
-        error.message || 'Error al actualizar usuario',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+  @UseGuards(JwtAuthGuard)
+  async update(@Param('id') id: string, @Body() updateUserDto: Partial<User>) {
+    const user = await this.usersService.update(id, updateUserDto);
+    if (!user) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
     }
+    return user;
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar un usuario' })
-  @ApiResponse({ status: 200, description: 'Usuario eliminado' })
+  @ApiResponse({ status: 200, description: 'Usuario eliminado correctamente' })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async remove(@Param('id') id: string) {
-    try {
-      await this.usersService.remove(id);
-      return { message: 'Usuario eliminado correctamente' };
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      
-      if (error.message && error.message.includes('not found')) {
-        throw new HttpException(
-          'Usuario no encontrado',
-          HttpStatus.NOT_FOUND
-        );
-      }
-      
-      throw new HttpException(
-        error.message || 'Error al eliminar usuario',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+    const user = await this.usersService.remove(id);
+    if (!user) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
     }
+    return { message: 'Usuario eliminado correctamente' };
   }
 }

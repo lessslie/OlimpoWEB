@@ -43,13 +43,13 @@ export class AuthController {
   }
 
   @Post('login')
-  @ApiOperation({ summary: 'Iniciar sesión' })
-  @ApiResponse({ status: 200, description: 'Inicio de sesión exitoso' })
-  @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
-  async login(@Body() loginDto: LoginDto) {
-    try {
-      const result = await this.authService.login(loginDto);
-      return result;
+@ApiOperation({ summary: 'Iniciar sesión' })
+@ApiResponse({ status: 200, description: 'Inicio de sesión exitoso' })
+@ApiResponse({ status: 401, description: 'Credenciales inválidas' })
+async login(@Body() loginDto: LoginDto) {
+  try {
+    const result = await this.authService.login(loginDto);
+    return result;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
