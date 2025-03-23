@@ -38,13 +38,38 @@ async function bootstrap() {
   // Configuración de Swagger
   const config = new DocumentBuilder()
     .setTitle('Olimpo Gym API')
-    .setDescription('API para la aplicación web del gimnasio Olimpo')
+    .setDescription('API para la gestión del gimnasio Olimpo')
     .setVersion('1.0')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Ingresa tu token JWT',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .addTag('App', 'Endpoints generales de la aplicación')
+    .addTag('auth', 'Endpoints de autenticación')
+    .addTag('users', 'Gestión de usuarios')
+    .addTag('memberships', 'Gestión de membresías')
+    .addTag('products', 'Gestión de productos')
+    .addTag('attendance', 'Gestión de asistencias')
+    .addTag('blog', 'Gestión del blog')
     .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
   
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha',
+    },
+    customSiteTitle: 'Olimpo Gym API Docs',
+  });
+
   // Intentar iniciar el servidor en diferentes puertos si el primero está ocupado
   const attemptToListen = async (ports: number[]) => {
     for (const port of ports) {
