@@ -57,7 +57,9 @@ export class AuthService {
           phone: user.phone,
           is_admin: user.is_admin,
         },
-        token,
+        token: {
+          access_token: token
+        },
       };
     } catch (error) {
       this.logger.error(`Error en registro: ${error.message}`, error.stack);
@@ -111,7 +113,9 @@ export class AuthService {
           phone: user.phone,
           is_admin: user.is_admin,
         },
-        token,
+        token: {
+          access_token: token
+        },
       };
     } catch (error) {
       this.logger.error(`Error en inicio de sesión: ${error.message}`, error.stack);
