@@ -321,17 +321,48 @@ El equipo de Olimpo Gym`,
 
               // Si el usuario tiene teléfono, enviar también por WhatsApp
               if (userData.phone) {
-                // Construir mensaje para WhatsApp
-                const message = `Hola ${fullName},\n\nTe recordamos que tu membresía ${membership.type} en Olimpo Gym expirará en ${daysRemaining} días (${membership.end_date.toLocaleDateString()}).\n\nPara evitar interrupciones en tu acceso al gimnasio, te recomendamos renovar tu membresía antes de la fecha de expiración.\n\n¡Gracias por ser parte de Olimpo Gym!\n\nSaludos,\nEl equipo de Olimpo Gym`;
+                try {
+                  // Buscar si existe una plantilla para notificaciones de expiración por WhatsApp
+                  const { data: templates, error: templateError } = await this.supabase
+                    .from('notification_templates')
+                    .select('*')
+                    .eq('type', 'WHATSAPP')
+                    .eq('is_default', true)
+                    .ilike('name', '%expiracion%')
+                    .limit(1);
+                  
+                  let templateId: string | undefined = undefined;
+                  if (!templateError && templates && templates.length > 0) {
+                    templateId = templates[0].id;
+                  }
+                  
+                  // Construir mensaje para WhatsApp
+                  const message = `Hola ${fullName},\n\nTe informamos que tu membresía ${membership.type} en Olimpo Gym expirará en ${daysRemaining} días (${membership.end_date.toLocaleDateString()}).\n\nPuedes renovarla visitando nuestras instalaciones o desde nuestra página web.\n\n¡Gracias por ser parte de Olimpo Gym!\n\nSaludos,\nEl equipo de Olimpo Gym`;
 
-                // Enviar notificación por WhatsApp
-                await this.notificationsService.sendWhatsApp(
-                  userData.phone,
-                  message,
-                );
-                console.log(
-                  `Notificación de expiración próxima enviada por WhatsApp a ${userData.phone}`,
-                );
+                  // Enviar notificación por WhatsApp
+                  const whatsappSuccess = await this.notificationsService.sendWhatsApp(
+                    userData.phone,
+                    message,
+                    userData.id,
+                    membership.id,
+                    templateId
+                  );
+                  
+                  if (whatsappSuccess) {
+                    console.log(
+                      `Notificación de expiración enviada por WhatsApp a ${userData.phone}`,
+                    );
+                  } else {
+                    console.warn(
+                      `No se pudo enviar la notificación de expiración por WhatsApp a ${userData.phone}`,
+                    );
+                  }
+                } catch (whatsappError) {
+                  console.error(
+                    `Error al enviar notificación por WhatsApp para la membresía ${membership.id}: ${whatsappError.message}`,
+                  );
+                  // Continuar con el proceso aunque falle el envío por WhatsApp
+                }
               }
             }
           } catch (notificationError) {
@@ -354,12 +385,6 @@ El equipo de Olimpo Gym`,
     }
   }
 
-  /**
-   * Encuentra membresías con renovación automática que expirarán entre dos fechas
-   * @param startDate Fecha de inicio del rango
-   * @param endDate Fecha de fin del rango
-   * @returns Lista de membresías con renovación automática que expirarán en el rango especificado
-   */
   async findAutoRenewMemberships(
     startDate: Date,
     endDate: Date,
@@ -395,11 +420,6 @@ El equipo de Olimpo Gym`,
     }
   }
 
-  /**
-   * Renueva una membresía específica
-   * @param id ID de la membresía a renovar
-   * @returns La membresía renovada
-   */
   async renewMembership(id: string): Promise<Membership> {
     try {
       // Obtener la membresía actual
@@ -481,9 +501,6 @@ El equipo de Olimpo Gym`,
     }
   }
 
-  /**
-   * Verifica y actualiza el estado de las membresías expiradas
-   */
   async checkExpiredMemberships(): Promise<void> {
     try {
       const today = new Date();
@@ -562,17 +579,48 @@ El equipo de Olimpo Gym`,
 
             // Si el usuario tiene teléfono, enviar también por WhatsApp
             if (userData.phone) {
-              // Construir mensaje para WhatsApp
-              const message = `Hola ${fullName},\n\nTe informamos que tu membresía ${membership.type} en Olimpo Gym ha expirado el ${new Date(membership.end_date).toLocaleDateString()}.\n\nPuedes renovarla visitando nuestras instalaciones o desde nuestra página web.\n\n¡Esperamos verte pronto!\n\nSaludos,\nEl equipo de Olimpo Gym`;
+              try {
+                // Buscar si existe una plantilla para notificaciones de expiración por WhatsApp
+                const { data: templates, error: templateError } = await this.supabase
+                  .from('notification_templates')
+                  .select('*')
+                  .eq('type', 'WHATSAPP')
+                  .eq('is_default', true)
+                  .ilike('name', '%expiracion%')
+                  .limit(1);
+                
+                let templateId: string | undefined = undefined;
+                if (!templateError && templates && templates.length > 0) {
+                  templateId = templates[0].id;
+                }
+                
+                // Construir mensaje para WhatsApp
+                const message = `Hola ${fullName},\n\nTe informamos que tu membresía ${membership.type} en Olimpo Gym ha expirado el ${new Date(membership.end_date).toLocaleDateString()}.\n\nPuedes renovarla visitando nuestras instalaciones o desde nuestra página web.\n\n¡Esperamos verte pronto!\n\nSaludos,\nEl equipo de Olimpo Gym`;
 
-              // Enviar notificación por WhatsApp
-              await this.notificationsService.sendWhatsApp(
-                userData.phone,
-                message,
-              );
-              console.log(
-                `Notificación de expiración enviada por WhatsApp a ${userData.phone}`,
-              );
+                // Enviar notificación por WhatsApp
+                const whatsappSuccess = await this.notificationsService.sendWhatsApp(
+                  userData.phone,
+                  message,
+                  userData.id,
+                  membership.id,
+                  templateId
+                );
+                
+                if (whatsappSuccess) {
+                  console.log(
+                    `Notificación de expiración enviada por WhatsApp a ${userData.phone}`,
+                  );
+                } else {
+                  console.warn(
+                    `No se pudo enviar la notificación de expiración por WhatsApp a ${userData.phone}`,
+                  );
+                }
+              } catch (whatsappError) {
+                console.error(
+                  `Error al enviar notificación por WhatsApp para la membresía ${membership.id}: ${whatsappError.message}`,
+                );
+                // Continuar con el proceso aunque falle el envío por WhatsApp
+              }
             }
           }
         } catch (notificationError) {
@@ -588,9 +636,6 @@ El equipo de Olimpo Gym`,
     }
   }
 
-  /**
-   * Renueva automáticamente las membresías que están configuradas para renovación automática
-   */
   async autoRenewMemberships(): Promise<void> {
     try {
       // Obtener membresías expiradas con auto_renew activado
@@ -653,21 +698,52 @@ El equipo de Olimpo Gym`,
 
             // Si el usuario tiene teléfono, enviar también por WhatsApp
             if (userData.phone) {
-              // Construir mensaje para WhatsApp
-              const message = `Hola ${fullName},\n\nTe informamos que tu membresía ${renewedMembership.type} en Olimpo Gym ha sido renovada exitosamente.\n\nTu nueva fecha de expiración es el ${renewedMembership.end_date.toLocaleDateString()}.\n\n¡Gracias por seguir confiando en Olimpo Gym!\n\nSaludos,\nEl equipo de Olimpo Gym`;
+              try {
+                // Buscar si existe una plantilla para notificaciones de expiración por WhatsApp
+                const { data: templates, error: templateError } = await this.supabase
+                  .from('notification_templates')
+                  .select('*')
+                  .eq('type', 'WHATSAPP')
+                  .eq('is_default', true)
+                  .ilike('name', '%expiracion%')
+                  .limit(1);
+                
+                let templateId: string | undefined = undefined;
+                if (!templateError && templates && templates.length > 0) {
+                  templateId = templates[0].id;
+                }
+                
+                // Construir mensaje para WhatsApp
+                const message = `Hola ${fullName},\n\nTe informamos que tu membresía ${renewedMembership.type} en Olimpo Gym ha sido renovada exitosamente.\n\nTu nueva fecha de expiración es el ${renewedMembership.end_date.toLocaleDateString()}.\n\n¡Gracias por seguir confiando en Olimpo Gym!\n\nSaludos,\nEl equipo de Olimpo Gym`;
 
-              // Enviar notificación por WhatsApp
-              await this.notificationsService.sendWhatsApp(
-                userData.phone,
-                message,
-              );
-              console.log(
-                `Notificación de renovación enviada por WhatsApp a ${userData.phone}`,
-              );
+                // Enviar notificación por WhatsApp
+                const whatsappSuccess = await this.notificationsService.sendWhatsApp(
+                  userData.phone,
+                  message,
+                  userData.id,
+                  membership.id,
+                  templateId
+                );
+                
+                if (whatsappSuccess) {
+                  console.log(
+                    `Notificación de renovación enviada por WhatsApp a ${userData.phone}`,
+                  );
+                } else {
+                  console.warn(
+                    `No se pudo enviar la notificación de renovación por WhatsApp a ${userData.phone}`,
+                  );
+                }
+              } catch (whatsappError) {
+                console.error(
+                  `Error al enviar notificación por WhatsApp para la membresía ${membership.id}: ${whatsappError.message}`,
+                );
+                // Continuar con el proceso aunque falle el envío por WhatsApp
+              }
             }
-          }
 
-          console.log(`Membresía ${membership.id} renovada automáticamente`);
+            console.log(`Membresía ${membership.id} renovada automáticamente`);
+          }
         } catch (renewError) {
           console.error(
             `Error al renovar la membresía ${membership.id}: ${renewError.message}`,
