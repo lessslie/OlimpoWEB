@@ -14,13 +14,16 @@ async function bootstrap() {
     origin: [
       'http://localhost:5173', // URL del frontend local (Vite)
       'http://localhost:5177', // URL del frontend local (puerto alternativo)
+      'http://localhost:3000', // URL del frontend local (Next.js)
       'https://olimpo-gym.onrender.com', // URL del frontend en producción (ajusta según tu dominio)
       'https://olimpo-web-xpf8.vercel.app', // URL del frontend en Vercel
       'https://olimpoweb.vercel.app', // Variante del dominio en Vercel
       'https://olimpo-frontend.vercel.app', // Nueva URL principal en Vercel
+      'https://olimpo-next.vercel.app', // URL de la aplicación Next.js en Vercel
       'https://olimpo-frontend-git-main-agatas-projects-96c6f9ee.vercel.app', // URL de despliegue específico
       'https://olimpo-frontend-64ilfiwlv-agatas-projects-96c6f9ee.vercel.app', // URL de despliegue específico
       /\.olimpo-gym\.com$/, // Dominios personalizados futuros
+      /\.vercel\.app$/, // Cualquier subdominio en vercel.app
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
