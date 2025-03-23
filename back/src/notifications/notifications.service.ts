@@ -53,6 +53,18 @@ export class NotificationsService {
         templateId,
       });
 
+      // Verificar si las credenciales de SendGrid están disponibles
+      const sendgridApiKey = this.configService.get<string>('SENDGRID_API_KEY');
+      if (!sendgridApiKey || sendgridApiKey.includes('your_sendgrid_api_key_here')) {
+        console.warn('Credenciales de SendGrid no configuradas. Email no enviado.');
+        await this.updateNotificationStatus(
+          notificationId,
+          NotificationStatus.FAILED,
+          'Credenciales de SendGrid no configuradas'
+        );
+        return false;
+      }
+
       // Configurar el correo
       const msg = {
         to,
@@ -139,12 +151,15 @@ export class NotificationsService {
       const whatsappToken = this.configService.get<string>('WHATSAPP_BUSINESS_API_TOKEN');
       const whatsappPhoneId = this.configService.get<string>('WHATSAPP_BUSINESS_PHONE_ID');
       
-      if (!whatsappToken || !whatsappPhoneId) {
-        console.error('Faltan credenciales de WhatsApp Business API');
+      // Verificar si las credenciales son válidas
+      if (!whatsappToken || !whatsappPhoneId || 
+          whatsappToken.includes('your_whatsapp_business_api_token_here') || 
+          whatsappPhoneId.includes('your_whatsapp_phone_id_here')) {
+        console.warn('Credenciales de WhatsApp Business API no configuradas o inválidas');
         await this.updateNotificationStatus(
           notificationId,
           NotificationStatus.FAILED,
-          'Faltan credenciales de WhatsApp Business API'
+          'Credenciales de WhatsApp Business API no configuradas o inválidas'
         );
         return false;
       }
