@@ -19,7 +19,10 @@ export class NotificationsService {
 
     // Inicializar Supabase
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL') || '';
-    const supabaseKey = this.configService.get<string>('SUPABASE_KEY') || '';
+    // Usar SUPABASE_SERVICE_KEY si está disponible, sino intentar con SUPABASE_KEY como fallback
+    const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_KEY') || 
+                        this.configService.get<string>('SUPABASE_KEY') || 
+                        this.configService.get<string>('SUPABASE_ANON_KEY') || '';
     this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
