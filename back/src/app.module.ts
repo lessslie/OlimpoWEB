@@ -8,6 +8,7 @@ import { MembershipsModule } from './memberships/memberships.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { BlogModule } from './blog/blog.module';
 import { ProductsModule } from './products/products.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ProductsModule } from './products/products.module';
     AttendanceModule,
     BlogModule,
     ProductsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

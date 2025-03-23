@@ -30,6 +30,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/swagger": "^11.0.7",
+    "@sendgrid/mail": "^8.1.4",
     "@supabase/supabase-js": "^2.49.1",
     "@types/bcrypt": "^5.0.2",
     "@types/passport-jwt": "^4.0.1",
