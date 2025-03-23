@@ -24,6 +24,7 @@ async function bootstrap() {
       'https://olimpo-frontend-64ilfiwlv-agatas-projects-96c6f9ee.vercel.app', // URL de despliegue específico
       /\.olimpo-gym\.com$/, // Dominios personalizados futuros
       /\.vercel\.app$/, // Cualquier subdominio en vercel.app
+      '*', // Permitir todas las solicitudes (solo para depuración temporal)
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
