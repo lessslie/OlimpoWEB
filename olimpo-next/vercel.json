@@ -5,5 +5,8 @@
   "framework": "nextjs",
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
-  ]
+  ],
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://olimpoweb.onrender.com/api"
+  }
 }
