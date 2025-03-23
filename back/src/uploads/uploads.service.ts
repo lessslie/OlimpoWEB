@@ -16,13 +16,30 @@ interface CloudinaryResponse {
 
 @Injectable()
 export class UploadsService {
+  private cloudinaryConfigured: boolean = false;
+
   constructor(private configService: ConfigService) {
     // Configurar Cloudinary
-    cloudinary.v2.config({
-      cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
-      api_key: this.configService.get<string>('CLOUDINARY_API_KEY'),
-      api_secret: this.configService.get<string>('CLOUDINARY_API_SECRET'),
-    });
+    try {
+      const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+      const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+      const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
+
+      if (cloudName && apiKey && apiSecret) {
+        cloudinary.v2.config({
+          cloud_name: cloudName,
+          api_key: apiKey,
+          api_secret: apiSecret,
+        });
+        this.cloudinaryConfigured = true;
+        console.log('Cloudinary configurado correctamente');
+      } else {
+        console.warn('Faltan credenciales de Cloudinary. El servicio de uploads usará almacenamiento local.');
+      }
+    } catch (error) {
+      console.error('Error al configurar Cloudinary:', error);
+      console.warn('El servicio de uploads usará almacenamiento local debido a un error en la configuración de Cloudinary.');
+    }
   }
 
   /**
@@ -31,6 +48,12 @@ export class UploadsService {
    * @returns Información del archivo subido
    */
   async uploadToCloudinary(file: any) {
+    // Verificar si Cloudinary está configurado
+    if (!this.cloudinaryConfigured) {
+      console.warn('Intento de subir archivo a Cloudinary, pero Cloudinary no está configurado correctamente');
+      throw new Error('Cloudinary no está configurado. No se puede subir el archivo.');
+    }
+
     try {
       // Convertir el buffer del archivo a base64
       const base64File = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
@@ -71,6 +94,12 @@ export class UploadsService {
    * @returns Mensaje de confirmación
    */
   async deleteFromCloudinary(publicId: string): Promise<{ message: string }> {
+    // Verificar si Cloudinary está configurado
+    if (!this.cloudinaryConfigured) {
+      console.warn('Intento de eliminar archivo de Cloudinary, pero Cloudinary no está configurado correctamente');
+      throw new Error('Cloudinary no está configurado. No se puede eliminar el archivo.');
+    }
+
     try {
       const result = await new Promise<string>((resolve, reject) => {
         cloudinary.v2.uploader.destroy(
@@ -129,5 +158,54 @@ export class UploadsService {
   fileExists(filename: string): boolean {
     const filePath = this.getFilePath(filename);
     return existsSync(filePath);
+  }
+
+  /**
+   * Guarda un archivo en el sistema de archivos local
+   * @param file Archivo a guardar
+   * @returns Información del archivo guardado
+   */
+  async saveFileLocally(file: any) {
+    try {
+      // Importar fs y path de manera dinámica para evitar errores si no están disponibles
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Crear el directorio de uploads si no existe
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      // Generar un nombre de archivo único
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      const extension = path.extname(file.originalname);
+      const filename = `${path.basename(file.originalname, extension)}-${uniqueSuffix}${extension}`;
+      
+      // Ruta completa del archivo
+      const filePath = path.join(uploadsDir, filename);
+      
+      // Guardar el archivo
+      fs.writeFileSync(filePath, file.buffer);
+      
+      // Construir la URL del archivo
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://olimpo-gym.onrender.com' 
+        : 'http://localhost:3000';
+      
+      // Devolver información del archivo
+      return {
+        url: `${baseUrl}/uploads/${filename}`,
+        public_id: filename,
+        format: extension.replace('.', ''),
+        width: 0, // No podemos determinar las dimensiones sin procesar la imagen
+        height: 0,
+        originalname: file.originalname,
+        size: file.size,
+        mimetype: file.mimetype,
+      };
+    } catch (error) {
+      throw new Error(`Error al guardar archivo localmente: ${error.message}`);
+    }
   }
 }

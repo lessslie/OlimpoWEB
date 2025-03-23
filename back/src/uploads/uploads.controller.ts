@@ -36,7 +36,7 @@ export class UploadsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Subir un archivo a Cloudinary' })
+  @ApiOperation({ summary: 'Subir un archivo a Cloudinary o almacenamiento local' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Archivo subido correctamente' })
   @ApiResponse({ status: 400, description: 'Formato de archivo no válido' })
@@ -55,8 +55,21 @@ export class UploadsController {
     }
 
     try {
-      const result = await this.uploadsService.uploadToCloudinary(file);
-      return result;
+      // Intentar subir a Cloudinary primero
+      try {
+        const result = await this.uploadsService.uploadToCloudinary(file);
+        return result;
+      } catch (cloudinaryError) {
+        // Si falla Cloudinary, usar almacenamiento local como fallback
+        if (cloudinaryError.message.includes('Cloudinary no está configurado')) {
+          console.log('Cloudinary no está configurado, usando almacenamiento local como fallback');
+          const result = await this.uploadsService.saveFileLocally(file);
+          return result;
+        } else {
+          // Si es otro tipo de error con Cloudinary, propagarlo
+          throw cloudinaryError;
+        }
+      }
     } catch (error) {
       throw new HttpException(
         `Error al subir el archivo: ${error.message}`,
@@ -79,10 +92,30 @@ export class UploadsController {
   @ApiResponse({ status: 404, description: 'Archivo no encontrado' })
   async deleteFromCloudinary(@Param('publicId') publicId: string) {
     try {
-      return await this.uploadsService.deleteFromCloudinary(publicId);
+      // Intentar eliminar de Cloudinary
+      try {
+        return await this.uploadsService.deleteFromCloudinary(publicId);
+      } catch (cloudinaryError) {
+        // Si Cloudinary no está configurado, verificar si es un archivo local
+        if (cloudinaryError.message.includes('Cloudinary no está configurado')) {
+          console.log('Cloudinary no está configurado, intentando eliminar archivo local');
+          // Comprobar si el publicId corresponde a un nombre de archivo local
+          if (this.uploadsService.fileExists(publicId)) {
+            return await this.uploadsService.deleteFile(publicId);
+          } else {
+            throw new HttpException(
+              `Archivo ${publicId} no encontrado`,
+              HttpStatus.NOT_FOUND,
+            );
+          }
+        } else {
+          // Si es otro tipo de error con Cloudinary, propagarlo
+          throw cloudinaryError;
+        }
+      }
     } catch (error) {
       throw new HttpException(
-        error.message,
+        `Error al eliminar el archivo: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
