@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { ConfigService } from '@nestjs/config';
-import * as cloudinary from 'cloudinary';
 
 // Definir la interfaz para la respuesta de Cloudinary
 interface CloudinaryResponse {
@@ -17,6 +16,7 @@ interface CloudinaryResponse {
 @Injectable()
 export class UploadsService {
   private cloudinaryConfigured: boolean = false;
+  private cloudinary: any = null;
 
   constructor(private configService: ConfigService) {
     // Configurar Cloudinary
@@ -26,13 +26,25 @@ export class UploadsService {
       const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
 
       if (cloudName && apiKey && apiSecret) {
-        cloudinary.v2.config({
-          cloud_name: cloudName,
-          api_key: apiKey,
-          api_secret: apiSecret,
-        });
-        this.cloudinaryConfigured = true;
-        console.log('Cloudinary configurado correctamente');
+        // Importar cloudinary dinámicamente
+        try {
+          // Intentar importar cloudinary
+          this.cloudinary = require('cloudinary');
+          
+          if (this.cloudinary) {
+            this.cloudinary.v2.config({
+              cloud_name: cloudName,
+              api_key: apiKey,
+              api_secret: apiSecret,
+            });
+            this.cloudinaryConfigured = true;
+            console.log('Cloudinary configurado correctamente');
+          } else {
+            console.warn('No se pudo cargar el módulo cloudinary');
+          }
+        } catch (importError) {
+          console.warn('Error al importar cloudinary:', importError.message);
+        }
       } else {
         console.warn('Faltan credenciales de Cloudinary. El servicio de uploads usará almacenamiento local.');
       }
@@ -60,7 +72,7 @@ export class UploadsService {
       
       // Subir a Cloudinary
       const result = await new Promise<CloudinaryResponse>((resolve, reject) => {
-        cloudinary.v2.uploader.upload(
+        this.cloudinary.v2.uploader.upload(
           base64File,
           {
             folder: 'olimpo',
@@ -102,7 +114,7 @@ export class UploadsService {
 
     try {
       const result = await new Promise<string>((resolve, reject) => {
-        cloudinary.v2.uploader.destroy(
+        this.cloudinary.v2.uploader.destroy(
           publicId,
           (error, result) => {
             if (error) return reject(error);
