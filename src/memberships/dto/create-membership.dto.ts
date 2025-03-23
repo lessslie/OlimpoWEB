@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 import { MembershipType } from '../entities/membership.entity';
 
 export class CreateMembershipDto {
@@ -18,7 +26,11 @@ export class CreateMembershipDto {
   @IsString({ message: 'La fecha de inicio debe ser un string' })
   start_date: string;
 
-  @ApiProperty({ example: 3, required: false, description: 'Días por semana (solo para membresías de kickboxing)' })
+  @ApiProperty({
+    example: 3,
+    required: false,
+    description: 'Días por semana (solo para membresías de kickboxing)',
+  })
   @IsOptional()
   @IsNumber({}, { message: 'Los días por semana deben ser un número' })
   @Min(1, { message: 'Los días por semana deben ser al menos 1' })
@@ -29,4 +41,13 @@ export class CreateMembershipDto {
   @IsNumber({}, { message: 'El precio debe ser un número' })
   @Min(0, { message: 'El precio no puede ser negativo' })
   price: number;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Indica si la membresía se renovará automáticamente al expirar',
+    required: false,
+  })
+  @IsOptional()
+  auto_renew?: boolean;
 }

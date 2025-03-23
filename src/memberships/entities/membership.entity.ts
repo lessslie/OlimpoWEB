@@ -2,6 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export enum MembershipType {
   MONTHLY = 'monthly',
+  QUARTERLY = 'quarterly',
+  BIANNUAL = 'biannual',
+  ANNUAL = 'annual',
   KICKBOXING = 'kickboxing',
 }
 
@@ -30,11 +33,22 @@ export class Membership {
   @ApiProperty({ example: '2025-04-22T00:00:00.000Z' })
   end_date: Date;
 
-  @ApiProperty({ example: 3, required: false, description: 'Días por semana (solo para membresías de kickboxing)' })
+  @ApiProperty({
+    example: 3,
+    required: false,
+    description: 'Días por semana (solo para membresías de kickboxing)',
+  })
   days_per_week?: number;
 
   @ApiProperty({ example: 5000 })
   price: number;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Indica si la membresía se renovará automáticamente al expirar',
+  })
+  auto_renew: boolean;
 
   @ApiProperty({ example: '2025-03-22T00:00:00.000Z' })
   created_at: Date;

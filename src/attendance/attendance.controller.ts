@@ -1,5 +1,23 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpException, HttpStatus, UseGuards, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpException,
+  HttpStatus,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
@@ -19,10 +37,17 @@ export class AttendanceController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Registrar una nueva asistencia' })
-  @ApiResponse({ status: 201, description: 'Asistencia registrada correctamente', type: Attendance })
+  @ApiResponse({
+    status: 201,
+    description: 'Asistencia registrada correctamente',
+    type: Attendance,
+  })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  @ApiResponse({ status: 403, description: 'Prohibido - No tiene permisos suficientes' })
+  @ApiResponse({
+    status: 403,
+    description: 'Prohibido - No tiene permisos suficientes',
+  })
   async create(@Body() createAttendanceDto: CreateAttendanceDto) {
     try {
       return await this.attendanceService.create(createAttendanceDto);
@@ -42,9 +67,16 @@ export class AttendanceController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener todas las asistencias' })
-  @ApiResponse({ status: 200, description: 'Lista de asistencias', type: [Attendance] })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de asistencias',
+    type: [Attendance],
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  @ApiResponse({ status: 403, description: 'Prohibido - No tiene permisos suficientes' })
+  @ApiResponse({
+    status: 403,
+    description: 'Prohibido - No tiene permisos suficientes',
+  })
   async findAll() {
     return await this.attendanceService.findAll();
   }
@@ -54,12 +86,29 @@ export class AttendanceController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener asistencias por rango de fechas' })
-  @ApiQuery({ name: 'startDate', required: true, type: String, description: 'Fecha de inicio (ISO string)' })
-  @ApiQuery({ name: 'endDate', required: true, type: String, description: 'Fecha de fin (ISO string)' })
-  @ApiResponse({ status: 200, description: 'Lista de asistencias', type: [Attendance] })
+  @ApiQuery({
+    name: 'startDate',
+    required: true,
+    type: String,
+    description: 'Fecha de inicio (ISO string)',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: true,
+    type: String,
+    description: 'Fecha de fin (ISO string)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de asistencias',
+    type: [Attendance],
+  })
   @ApiResponse({ status: 400, description: 'Parámetros inválidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  @ApiResponse({ status: 403, description: 'Prohibido - No tiene permisos suficientes' })
+  @ApiResponse({
+    status: 403,
+    description: 'Prohibido - No tiene permisos suficientes',
+  })
   async findByDateRange(
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
@@ -77,7 +126,11 @@ export class AttendanceController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener una asistencia por ID' })
-  @ApiResponse({ status: 200, description: 'Asistencia encontrada', type: Attendance })
+  @ApiResponse({
+    status: 200,
+    description: 'Asistencia encontrada',
+    type: Attendance,
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 404, description: 'Asistencia no encontrada' })
   async findOne(@Param('id') id: string) {
@@ -88,7 +141,11 @@ export class AttendanceController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener todas las asistencias de un usuario' })
-  @ApiResponse({ status: 200, description: 'Lista de asistencias del usuario', type: [Attendance] })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de asistencias del usuario',
+    type: [Attendance],
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   async findByUser(@Param('userId') userId: string) {
     return await this.attendanceService.findByUser(userId);
@@ -99,12 +156,22 @@ export class AttendanceController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar una asistencia' })
-  @ApiResponse({ status: 200, description: 'Asistencia actualizada correctamente', type: Attendance })
+  @ApiResponse({
+    status: 200,
+    description: 'Asistencia actualizada correctamente',
+    type: Attendance,
+  })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  @ApiResponse({ status: 403, description: 'Prohibido - No tiene permisos suficientes' })
+  @ApiResponse({
+    status: 403,
+    description: 'Prohibido - No tiene permisos suficientes',
+  })
   @ApiResponse({ status: 404, description: 'Asistencia no encontrada' })
-  async update(@Param('id') id: string, @Body() updateAttendanceDto: UpdateAttendanceDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateAttendanceDto: UpdateAttendanceDto,
+  ) {
     return await this.attendanceService.update(id, updateAttendanceDto);
   }
 
@@ -113,9 +180,15 @@ export class AttendanceController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar una asistencia' })
-  @ApiResponse({ status: 200, description: 'Asistencia eliminada correctamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Asistencia eliminada correctamente',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  @ApiResponse({ status: 403, description: 'Prohibido - No tiene permisos suficientes' })
+  @ApiResponse({
+    status: 403,
+    description: 'Prohibido - No tiene permisos suficientes',
+  })
   @ApiResponse({ status: 404, description: 'Asistencia no encontrada' })
   async remove(@Param('id') id: string) {
     await this.attendanceService.remove(id);
@@ -127,10 +200,17 @@ export class AttendanceController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Registrar la salida de una asistencia' })
-  @ApiResponse({ status: 200, description: 'Salida registrada correctamente', type: Attendance })
+  @ApiResponse({
+    status: 200,
+    description: 'Salida registrada correctamente',
+    type: Attendance,
+  })
   @ApiResponse({ status: 400, description: 'La salida ya ha sido registrada' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  @ApiResponse({ status: 403, description: 'Prohibido - No tiene permisos suficientes' })
+  @ApiResponse({
+    status: 403,
+    description: 'Prohibido - No tiene permisos suficientes',
+  })
   @ApiResponse({ status: 404, description: 'Asistencia no encontrada' })
   async checkOut(@Param('id') id: string) {
     return await this.attendanceService.checkOut(id);
@@ -152,14 +232,24 @@ export class AttendanceController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verificar un código QR y registrar asistencia' })
-  @ApiResponse({ status: 200, description: 'Asistencia registrada correctamente', type: Attendance })
-  @ApiResponse({ status: 400, description: 'Código QR inválido o usuario sin membresía activa' })
+  @ApiResponse({
+    status: 200,
+    description: 'Asistencia registrada correctamente',
+    type: Attendance,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Código QR inválido o usuario sin membresía activa',
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  @ApiResponse({ status: 403, description: 'Prohibido - No tiene permisos suficientes' })
+  @ApiResponse({
+    status: 403,
+    description: 'Prohibido - No tiene permisos suficientes',
+  })
   async verifyQRCode(@Body() body: { token: string }) {
     try {
       const { userId } = await this.attendanceService.verifyQRCode(body.token);
-      
+
       // Registrar la asistencia
       return await this.attendanceService.create({ user_id: userId });
     } catch (error) {

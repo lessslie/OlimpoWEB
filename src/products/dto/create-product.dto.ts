@@ -1,5 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { ProductCategory } from '../entities/product.entity';
 
 export class CreateProductDto {
@@ -10,10 +21,15 @@ export class CreateProductDto {
   @MaxLength(100, { message: 'El nombre debe tener máximo 100 caracteres' })
   name: string;
 
-  @ApiProperty({ example: 'Proteína de suero de leche de alta calidad para ayudar en la recuperación muscular.' })
+  @ApiProperty({
+    example:
+      'Proteína de suero de leche de alta calidad para ayudar en la recuperación muscular.',
+  })
   @IsNotEmpty({ message: 'La descripción es requerida' })
   @IsString({ message: 'La descripción debe ser un texto' })
-  @MinLength(10, { message: 'La descripción debe tener al menos 10 caracteres' })
+  @MinLength(10, {
+    message: 'La descripción debe tener al menos 10 caracteres',
+  })
   description: string;
 
   @ApiProperty({ example: 5000 })
@@ -22,7 +38,10 @@ export class CreateProductDto {
   @Min(0, { message: 'El precio no puede ser negativo' })
   price: number;
 
-  @ApiProperty({ example: 'https://example.com/images/product-image.jpg', required: false })
+  @ApiProperty({
+    example: 'https://example.com/images/product-image.jpg',
+    required: false,
+  })
   @IsOptional()
   @IsUrl({}, { message: 'La imagen debe ser una URL válida' })
   image?: string;

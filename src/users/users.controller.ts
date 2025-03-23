@@ -1,5 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpException,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UsersService, User } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -22,17 +38,14 @@ export class UsersController {
       if (error instanceof HttpException) {
         throw error;
       }
-      
+
       if (error.message && error.message.includes('already exists')) {
-        throw new HttpException(
-          'El usuario ya existe',
-          HttpStatus.CONFLICT
-        );
+        throw new HttpException('El usuario ya existe', HttpStatus.CONFLICT);
       }
-      
+
       throw new HttpException(
         error.message || 'Error al crear usuario',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -62,7 +75,10 @@ export class UsersController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un usuario' })
-  @ApiResponse({ status: 200, description: 'Usuario actualizado correctamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Usuario actualizado correctamente',
+  })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

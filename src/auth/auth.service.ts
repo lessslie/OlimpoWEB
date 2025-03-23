@@ -15,11 +15,13 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     try {
       // Verificar si el usuario ya existe
-      const existingUser = await this.usersService.findByEmail(registerDto.email);
+      const existingUser = await this.usersService.findByEmail(
+        registerDto.email,
+      );
       if (existingUser) {
         throw new HttpException(
           'Este email ya está registrado',
-          HttpStatus.CONFLICT
+          HttpStatus.CONFLICT,
         );
       }
 
@@ -57,7 +59,7 @@ export class AuthService {
       }
       throw new HttpException(
         error.message || 'Error al registrar usuario',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -69,16 +71,19 @@ export class AuthService {
       if (!user) {
         throw new HttpException(
           'Credenciales inválidas',
-          HttpStatus.UNAUTHORIZED
+          HttpStatus.UNAUTHORIZED,
         );
       }
 
       // Verificar contraseña
-      const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+      const isPasswordValid = await bcrypt.compare(
+        loginDto.password,
+        user.password,
+      );
       if (!isPasswordValid) {
         throw new HttpException(
           'Credenciales inválidas',
-          HttpStatus.UNAUTHORIZED
+          HttpStatus.UNAUTHORIZED,
         );
       }
 
@@ -103,7 +108,7 @@ export class AuthService {
       }
       throw new HttpException(
         error.message || 'Error al iniciar sesión',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -112,11 +117,11 @@ export class AuthService {
     try {
       const payload = this.jwtService.verify(token);
       const user = await this.usersService.findOne(payload.sub);
-      
+
       if (!user) {
         throw new HttpException(
           'Token inválido o expirado',
-          HttpStatus.UNAUTHORIZED
+          HttpStatus.UNAUTHORIZED,
         );
       }
 
@@ -133,7 +138,7 @@ export class AuthService {
     } catch (error) {
       throw new HttpException(
         'Token inválido o expirado',
-        HttpStatus.UNAUTHORIZED
+        HttpStatus.UNAUTHORIZED,
       );
     }
   }

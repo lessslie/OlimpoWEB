@@ -10,7 +10,10 @@ export class AppController {
   @Get()
   @Redirect('api/docs', 302)
   @ApiOperation({ summary: 'Redirige a la documentación de Swagger' })
-  @ApiResponse({ status: 302, description: 'Redirige a la documentación de Swagger' })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirige a la documentación de Swagger',
+  })
   redirectToSwagger() {
     return;
   }

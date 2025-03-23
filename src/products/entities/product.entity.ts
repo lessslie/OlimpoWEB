@@ -17,13 +17,19 @@ export class Product {
   @ApiProperty({ example: 'proteina-whey' })
   slug: string;
 
-  @ApiProperty({ example: 'Proteína de suero de leche de alta calidad para ayudar en la recuperación muscular.' })
+  @ApiProperty({
+    example:
+      'Proteína de suero de leche de alta calidad para ayudar en la recuperación muscular.',
+  })
   description: string;
 
   @ApiProperty({ example: 5000 })
   price: number;
 
-  @ApiProperty({ example: 'https://example.com/images/product-image.jpg', required: false })
+  @ApiProperty({
+    example: 'https://example.com/images/product-image.jpg',
+    required: false,
+  })
   image?: string;
 
   @ApiProperty({ enum: ProductCategory, example: ProductCategory.SUPPLEMENTS })

@@ -18,6 +18,9 @@ export class User {
   @ApiProperty({ example: 'Pérez' })
   last_name: string;
 
+  @ApiProperty({ example: 'Juan Pérez' })
+  full_name: string;
+
   @ApiProperty({ example: '1123456789' })
   phone: string;
 

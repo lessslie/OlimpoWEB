@@ -12,18 +12,18 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    
+
     if (!requiredRoles) {
       return true;
     }
-    
+
     const { user } = context.switchToHttp().getRequest();
-    
+
     // Si el usuario es administrador, permitir acceso a cualquier ruta protegida por roles
     if (user.is_admin) {
       return true;
     }
-    
+
     // Verificar si el usuario tiene el rol requerido
     return requiredRoles.some((role) => user.role === role);
   }

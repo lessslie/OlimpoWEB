@@ -13,11 +13,11 @@ export class BlogService {
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
     const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_KEY');
-    
+
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Supabase environment variables are not defined');
     }
-    
+
     this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
@@ -25,7 +25,7 @@ export class BlogService {
     try {
       // Generar slug a partir del título
       const slug = slugify(createPostDto.title, { lower: true, strict: true });
-      
+
       // Verificar si ya existe un post con el mismo slug
       const { data: existingPost } = await this.supabase
         .from('blog_posts')
@@ -48,7 +48,10 @@ export class BlogService {
         featured_image: createPostDto.featured_image,
         tags: createPostDto.tags || [],
         status: createPostDto.status || PostStatus.DRAFT,
-        published_at: createPostDto.status === PostStatus.PUBLISHED ? new Date().toISOString() : null,
+        published_at:
+          createPostDto.status === PostStatus.PUBLISHED
+            ? new Date().toISOString()
+            : null,
       };
 
       const { data, error } = await this.supabase
@@ -126,10 +129,7 @@ export class BlogService {
       }
 
       if (!data) {
-        throw new HttpException(
-          'Post no encontrado',
-          HttpStatus.NOT_FOUND,
-        );
+        throw new HttpException('Post no encontrado', HttpStatus.NOT_FOUND);
       }
 
       return data;
@@ -160,10 +160,7 @@ export class BlogService {
       }
 
       if (!data) {
-        throw new HttpException(
-          'Post no encontrado',
-          HttpStatus.NOT_FOUND,
-        );
+        throw new HttpException('Post no encontrado', HttpStatus.NOT_FOUND);
       }
 
       return data;
@@ -184,11 +181,14 @@ export class BlogService {
       await this.findOne(id);
 
       // Si se actualiza el título, actualizar también el slug
-      let updateData: any = { ...updatePostDto };
-      
+      const updateData: any = { ...updatePostDto };
+
       if (updatePostDto.title) {
-        const slug = slugify(updatePostDto.title, { lower: true, strict: true });
-        
+        const slug = slugify(updatePostDto.title, {
+          lower: true,
+          strict: true,
+        });
+
         // Verificar si ya existe otro post con el mismo slug
         const { data: existingPost } = await this.supabase
           .from('blog_posts')
@@ -312,7 +312,7 @@ export class BlogService {
       }
 
       // Extraer todas las etiquetas y eliminar duplicados
-      const allTags = data.flatMap(post => post.tags || []);
+      const allTags = data.flatMap((post) => post.tags || []);
       const uniqueTags = [...new Set(allTags)];
 
       return uniqueTags;

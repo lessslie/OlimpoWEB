@@ -13,19 +13,22 @@ export class ProductsService {
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
     const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_KEY');
-    
+
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Supabase environment variables are not defined');
     }
-    
+
     this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     try {
       // Generar slug a partir del nombre
-      const slug = slugify(createProductDto.name, { lower: true, strict: true });
-      
+      const slug = slugify(createProductDto.name, {
+        lower: true,
+        strict: true,
+      });
+
       // Verificar si ya existe un producto con el mismo slug
       const { data: existingProduct } = await this.supabase
         .from('products')
@@ -75,7 +78,10 @@ export class ProductsService {
     }
   }
 
-  async findAll(category?: ProductCategory, onlyAvailable = false): Promise<Product[]> {
+  async findAll(
+    category?: ProductCategory,
+    onlyAvailable = false,
+  ): Promise<Product[]> {
     try {
       let query = this.supabase
         .from('products')
@@ -126,10 +132,7 @@ export class ProductsService {
       }
 
       if (!data) {
-        throw new HttpException(
-          'Producto no encontrado',
-          HttpStatus.NOT_FOUND,
-        );
+        throw new HttpException('Producto no encontrado', HttpStatus.NOT_FOUND);
       }
 
       return data;
@@ -160,10 +163,7 @@ export class ProductsService {
       }
 
       if (!data) {
-        throw new HttpException(
-          'Producto no encontrado',
-          HttpStatus.NOT_FOUND,
-        );
+        throw new HttpException('Producto no encontrado', HttpStatus.NOT_FOUND);
       }
 
       return data;
@@ -178,17 +178,23 @@ export class ProductsService {
     }
   }
 
-  async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
+  async update(
+    id: string,
+    updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
     try {
       // Verificar si el producto existe
       await this.findOne(id);
 
       // Si se actualiza el nombre, actualizar también el slug
-      let updateData: any = { ...updateProductDto };
-      
+      const updateData: any = { ...updateProductDto };
+
       if (updateProductDto.name) {
-        const slug = slugify(updateProductDto.name, { lower: true, strict: true });
-        
+        const slug = slugify(updateProductDto.name, {
+          lower: true,
+          strict: true,
+        });
+
         // Verificar si ya existe otro producto con el mismo slug
         const { data: existingProduct } = await this.supabase
           .from('products')

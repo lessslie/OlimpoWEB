@@ -19,13 +19,22 @@ export class Post {
   @ApiProperty({ example: 'slug-del-post' })
   slug: string;
 
-  @ApiProperty({ example: 'Descubre los increíbles beneficios del entrenamiento de fuerza para tu salud...' })
+  @ApiProperty({
+    example:
+      'Descubre los increíbles beneficios del entrenamiento de fuerza para tu salud...',
+  })
   content: string;
 
-  @ApiProperty({ example: 'https://example.com/images/post-image.jpg', required: false })
+  @ApiProperty({
+    example: 'https://example.com/images/post-image.jpg',
+    required: false,
+  })
   featured_image?: string;
 
-  @ApiProperty({ example: ['musculación', 'entrenamiento', 'salud'], required: false })
+  @ApiProperty({
+    example: ['musculación', 'entrenamiento', 'salud'],
+    required: false,
+  })
   tags?: string[];
 
   @ApiProperty({ enum: PostStatus, example: PostStatus.PUBLISHED })
