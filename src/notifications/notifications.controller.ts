@@ -5,15 +5,16 @@ import {
   UseGuards,
   Get,
   Param,
-  Delete,
   Put,
+  Delete,
+  Query,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../users/enums/role.enum';
-import { NotificationType } from './entities/notification.entity';
+import { Role } from '../users/entities/user.entity';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { NotificationType, NotificationStatus } from './entities/notification.entity';
 
 class SendEmailDto {
   email: string;
@@ -112,57 +113,52 @@ export class NotificationsController {
   }
 
   @Post('membership-expiration')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async sendMembershipExpirationNotification(
     @Body() dto: SendMembershipExpirationDto,
   ) {
-    try {
-      const result = await this.notificationsService.sendMembershipExpirationNotification(
-        dto.email,
-        dto.name,
-        new Date(dto.expirationDate),
-        dto.membershipType,
-        dto.userId,
-        dto.membershipId,
-        dto.templateId,
-      );
-      return { success: result };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    const success = await this.notificationsService.sendMembershipExpirationNotification({
+      email: dto.email,
+      name: dto.name,
+      expirationDate: dto.expirationDate,
+      membershipType: dto.membershipType,
+      userId: dto.userId,
+      membershipId: dto.membershipId,
+      templateId: dto.templateId,
+    });
+    return { success };
   }
 
   @Post('membership-renewal')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async sendMembershipRenewalNotification(
     @Body() dto: SendMembershipRenewalDto,
   ) {
-    try {
-      const result = await this.notificationsService.sendMembershipRenewalNotification(
-        dto.email,
-        dto.name,
-        new Date(dto.newExpirationDate),
-        dto.membershipType,
-        dto.userId,
-        dto.membershipId,
-        dto.templateId,
-      );
-      return { success: result };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    const success = await this.notificationsService.sendMembershipRenewalNotification({
+      email: dto.email,
+      name: dto.name,
+      newExpirationDate: dto.newExpirationDate,
+      membershipType: dto.membershipType,
+      userId: dto.userId,
+      membershipId: dto.membershipId,
+      templateId: dto.templateId,
+    });
+    return { success };
   }
 
   @Post('bulk-email')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async sendBulkEmail(@Body() sendBulkEmailDto: SendBulkEmailDto) {
-    const result = await this.notificationsService.sendBulkEmail(
-      sendBulkEmailDto.emails,
-      sendBulkEmailDto.subject,
-      sendBulkEmailDto.message,
-      sendBulkEmailDto.templateId,
-    );
-    return { success: result };
+    const result = await this.notificationsService.sendBulkEmail({
+      emails: sendBulkEmailDto.emails,
+      subject: sendBulkEmailDto.subject,
+      message: sendBulkEmailDto.message,
+      templateId: sendBulkEmailDto.templateId,
+    });
+    return result;
   }
 
   @Get()
@@ -182,18 +178,19 @@ export class NotificationsController {
   // Endpoints para gestionar plantillas
 
   @Post('templates')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async createTemplate(@Body() createTemplateDto: CreateTemplateDto) {
-    const template = await this.notificationsService.createTemplate(
-      createTemplateDto.name,
-      createTemplateDto.description,
-      createTemplateDto.type,
-      createTemplateDto.content,
-      createTemplateDto.variables,
-      createTemplateDto.subject,
-      createTemplateDto.isDefault,
-      createTemplateDto.createdBy,
-    );
+    const template = await this.notificationsService.createTemplate({
+      name: createTemplateDto.name,
+      description: createTemplateDto.description,
+      type: createTemplateDto.type,
+      content: createTemplateDto.content,
+      variables: createTemplateDto.variables,
+      subject: createTemplateDto.subject,
+      isDefault: createTemplateDto.isDefault,
+      createdBy: createTemplateDto.createdBy,
+    });
     return { success: !!template, template };
   }
 
@@ -205,10 +202,10 @@ export class NotificationsController {
   }
 
   @Get('templates/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async getTemplateById(@Param('id') id: string) {
-    const template = await this.notificationsService.getTemplateById(id);
-    return { template };
+    return this.notificationsService.getTemplateById(id);
   }
 
   @Put('templates/:id')
@@ -226,5 +223,37 @@ export class NotificationsController {
   async deleteTemplate(@Param('id') id: string) {
     const success = await this.notificationsService.deleteTemplate(id);
     return { success };
+  }
+
+  @Get('logs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async getNotificationLogs(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('type') type?: string,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('userId') userId?: string,
+    @Query('membershipId') membershipId?: string,
+  ) {
+    return this.notificationsService.getNotificationLogs({
+      page: +page,
+      limit: +limit,
+      type: type as NotificationType,
+      status: status as NotificationStatus,
+      startDate,
+      endDate,
+      userId,
+      membershipId,
+    });
+  }
+
+  @Get('logs/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async getNotificationLogById(@Param('id') id: string) {
+    return this.notificationsService.getNotificationLogById(id);
   }
 }

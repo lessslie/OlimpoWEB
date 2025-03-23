@@ -1,33 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Notification, NotificationStatus, NotificationType } from './entities/notification.entity';
+import { NotificationStatus, NotificationType } from './entities/notification.entity';
 import { NotificationTemplate } from './entities/template.entity';
 import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
 
 @Injectable()
 export class NotificationsService {
   private supabase: SupabaseClient;
 
   constructor(private configService: ConfigService) {
-    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
-    const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_KEY');
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase environment variables are not defined');
-    }
-    
+    const supabaseUrl = this.configService.get<string>('SUPABASE_URL') || '';
+    const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_KEY') || '';
     this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
   /**
-   * Envía una notificación por correo electrónico
+   * Envía un correo electrónico
    * @param email Correo electrónico del destinatario
    * @param subject Asunto del correo
    * @param message Contenido del correo
-   * @param userId ID del usuario relacionado (opcional)
-   * @param membershipId ID de la membresía relacionada (opcional)
-   * @param templateId ID de la plantilla utilizada (opcional)
+   * @param userId ID del usuario (opcional)
+   * @param membershipId ID de la membresía (opcional)
+   * @param templateId ID de la plantilla (opcional)
    */
   async sendEmail(
     email: string,
@@ -39,64 +35,46 @@ export class NotificationsService {
   ): Promise<boolean> {
     try {
       // Crear registro de notificación con estado pendiente
-      const notificationId = await this.createNotificationRecord(
-        NotificationType.EMAIL,
-        email,
-        message,
+      const notificationId = await this.createNotificationRecord({
+        type: NotificationType.EMAIL,
+        recipient: email,
+        content: message,
         subject,
+        status: NotificationStatus.PENDING,
         userId,
         membershipId,
         templateId,
-      );
+      });
 
-      // Aquí iría la integración con SendGrid
-      // Este es un ejemplo de cómo se implementaría con SendGrid
-      /*
-      const sgMail = require('@sendgrid/mail');
-      sgMail.setApiKey(this.configService.get<string>('SENDGRID_API_KEY'));
-      
-      const msg = {
-        to: email,
-        from: this.configService.get<string>('SENDGRID_FROM_EMAIL'),
-        subject: subject,
-        text: message,
-        html: message.replace(/\n/g, '<br>'),
-      };
-      
-      await sgMail.send(msg);
-      */
-
-      // Por ahora, simulamos el envío
-      console.log(`Enviando email a ${email} con asunto: ${subject}`);
+      // Aquí iría la implementación real con SendGrid o similar
+      console.log(`Enviando email a ${email}`);
+      console.log(`Asunto: ${subject}`);
       console.log(`Mensaje: ${message}`);
 
-      // Actualizar el registro de notificación como enviado
-      await this.updateNotificationStatus(notificationId, NotificationStatus.SENT);
+      // Simulamos un envío exitoso (en producción, esto sería reemplazado por la llamada real a la API)
+      const success = true;
 
-      return true;
+      // Actualizar el registro de notificación según el resultado
+      if (success) {
+        await this.updateNotificationStatus(notificationId, NotificationStatus.SENT);
+      } else {
+        await this.updateNotificationStatus(notificationId, NotificationStatus.FAILED, 'Error al enviar email');
+      }
+
+      return success;
     } catch (error) {
       console.error('Error al enviar email:', error);
-      
-      // Si tenemos un ID de notificación, actualizar su estado a fallido
-      if (arguments[6]) {
-        await this.updateNotificationStatus(
-          arguments[6], 
-          NotificationStatus.FAILED, 
-          error.message
-        );
-      }
-      
       return false;
     }
   }
 
   /**
-   * Envía una notificación por WhatsApp
+   * Envía un mensaje de WhatsApp
    * @param phone Número de teléfono del destinatario
-   * @param message Mensaje a enviar
-   * @param userId ID del usuario relacionado (opcional)
-   * @param membershipId ID de la membresía relacionada (opcional)
-   * @param templateId ID de la plantilla utilizada (opcional)
+   * @param message Contenido del mensaje
+   * @param userId ID del usuario (opcional)
+   * @param membershipId ID de la membresía (opcional)
+   * @param templateId ID de la plantilla (opcional)
    */
   async sendWhatsApp(
     phone: string,
@@ -106,55 +84,165 @@ export class NotificationsService {
     templateId?: string,
   ): Promise<boolean> {
     try {
-      // Crear registro de notificación con estado pendiente
-      const notificationId = await this.createNotificationRecord(
-        NotificationType.WHATSAPP,
-        phone,
-        message,
-        undefined,
+      // Normalizar el número de teléfono (eliminar espacios, guiones, etc.)
+      const normalizedPhone = phone.replace(/\s+/g, '').replace(/-/g, '');
+      
+      // Verificar si el número tiene el formato correcto
+      if (!normalizedPhone.match(/^\+?[0-9]+$/)) {
+        throw new Error('Formato de número de teléfono inválido');
+      }
+      
+      // Asegurarse de que el número tenga el código de país
+      let formattedPhone = normalizedPhone;
+      if (!formattedPhone.startsWith('+')) {
+        // Si no tiene el signo +, verificar si tiene el código de país (Argentina: 54)
+        if (!formattedPhone.startsWith('54')) {
+          formattedPhone = '54' + formattedPhone;
+        }
+      } else {
+        // Si tiene el signo +, quitarlo para el formato que necesita WhatsApp
+        formattedPhone = formattedPhone.substring(1);
+      }
+      
+      // Crear el registro de notificación
+      const notificationId = await this.createNotificationRecord({
+        type: NotificationType.WHATSAPP,
+        recipient: formattedPhone,
+        content: message,
+        status: NotificationStatus.PENDING,
         userId,
         membershipId,
         templateId,
-      );
-
-      // Formatear el número de teléfono (eliminar espacios, guiones, etc.)
-      const formattedPhone = phone.replace(/\D/g, '');
-      
-      // Construir la URL para la API de WhatsApp
-      const whatsappUrl = `https://api.whatsapp.com/send/?phone=${formattedPhone}&text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`;
-      
-      // En un entorno real, aquí se podría usar la API oficial de WhatsApp Business
-      // Por ejemplo, con Twilio:
-      /*
-      const accountSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
-      const authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
-      const client = require('twilio')(accountSid, authToken);
-      
-      await client.messages.create({
-        body: message,
-        from: `whatsapp:${this.configService.get<string>('TWILIO_WHATSAPP_NUMBER')}`,
-        to: `whatsapp:${formattedPhone}`
       });
-      */
       
-      // Para esta implementación, registramos la URL que se generaría
-      console.log(`URL de WhatsApp generada: ${whatsappUrl}`);
-      console.log(`Mensaje: ${message}`);
+      // Intentar enviar usando la API de WhatsApp Business
+      const whatsappToken = process.env.WHATSAPP_BUSINESS_API_TOKEN;
+      const whatsappPhoneId = process.env.WHATSAPP_BUSINESS_PHONE_ID;
       
-      // Actualizar el registro de notificación como enviado
-      await this.updateNotificationStatus(notificationId, NotificationStatus.SENT);
-
-      // Simulamos un envío exitoso
-      return true;
+      if (whatsappToken && whatsappPhoneId) {
+        try {
+          // Verificar si se está utilizando una plantilla
+          let response;
+          
+          if (templateId) {
+            // Obtener la plantilla
+            const template = await this.getTemplateById(templateId);
+            
+            if (template && template.whatsapp_template_name) {
+              // Enviar mensaje usando plantilla de WhatsApp
+              response = await axios.post(
+                `https://graph.facebook.com/v18.0/${whatsappPhoneId}/messages`,
+                {
+                  messaging_product: 'whatsapp',
+                  to: formattedPhone,
+                  type: 'template',
+                  template: {
+                    name: template.whatsapp_template_name,
+                    language: {
+                      code: 'es',
+                    },
+                    components: [
+                      {
+                        type: 'body',
+                        parameters: this.extractTemplateParameters(message, template.variables)
+                      }
+                    ]
+                  }
+                },
+                {
+                  headers: {
+                    'Authorization': `Bearer ${whatsappToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+            } else {
+              // Si no hay nombre de plantilla de WhatsApp, usar el método de texto
+              response = await axios.post(
+                `https://graph.facebook.com/v18.0/${whatsappPhoneId}/messages`,
+                {
+                  messaging_product: 'whatsapp',
+                  to: formattedPhone,
+                  type: 'text',
+                  text: {
+                    body: message
+                  }
+                },
+                {
+                  headers: {
+                    'Authorization': `Bearer ${whatsappToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+            }
+          } else {
+            // Enviar mensaje de texto normal
+            response = await axios.post(
+              `https://graph.facebook.com/v18.0/${whatsappPhoneId}/messages`,
+              {
+                messaging_product: 'whatsapp',
+                to: formattedPhone,
+                type: 'text',
+                text: {
+                  body: message
+                }
+              },
+              {
+                headers: {
+                  'Authorization': `Bearer ${whatsappToken}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+          }
+          
+          if (response.status === 200) {
+            // Actualizar el registro de notificación como enviado
+            await this.updateNotificationStatus(notificationId, NotificationStatus.SENT);
+            return true;
+          } else {
+            throw new Error(`Error al enviar WhatsApp: ${response.statusText}`);
+          }
+        } catch (apiError) {
+          console.error('Error al enviar WhatsApp usando API:', apiError);
+          
+          // Si falla la API, intentar con el método de URL
+          const whatsappUrl = `https://api.whatsapp.com/send/?phone=${formattedPhone}&text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`;
+          
+          // Actualizar el registro con el error de la API
+          await this.updateNotificationStatus(
+            notificationId, 
+            NotificationStatus.FAILED, 
+            `Error al enviar por API: ${apiError.message}. URL alternativa: ${whatsappUrl}`
+          );
+          
+          // Devolver false porque no se pudo enviar automáticamente
+          return false;
+        }
+      } else {
+        // Si no hay configuración de API, usar el método de URL
+        const whatsappUrl = `https://api.whatsapp.com/send/?phone=${formattedPhone}&text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`;
+        
+        // Actualizar el registro con la información de la URL
+        await this.updateNotificationStatus(
+          notificationId, 
+          NotificationStatus.PENDING, 
+          `No hay configuración de API de WhatsApp. URL alternativa: ${whatsappUrl}`
+        );
+        
+        // Devolver false porque no se pudo enviar automáticamente
+        return false;
+      }
     } catch (error) {
       console.error('Error al enviar WhatsApp:', error);
       
-      // Si tenemos un ID de notificación, actualizar su estado a fallido
-      if (arguments[5]) {
+      // Si se creó un registro de notificación, actualizarlo con el error
+      if (error.notificationId) {
         await this.updateNotificationStatus(
-          arguments[5], 
+          error.notificationId, 
           NotificationStatus.FAILED, 
-          error.message
+          `Error: ${error.message}`
         );
       }
       
@@ -162,259 +250,113 @@ export class NotificationsService {
     }
   }
 
-  /**
-   * Envía una notificación de expiración de membresía
-   * @param email Correo electrónico del usuario
-   * @param name Nombre del usuario
-   * @param expirationDate Fecha de expiración de la membresía
-   * @param membershipType Tipo de membresía
-   * @param userId ID del usuario
-   * @param membershipId ID de la membresía
-   * @param templateId ID de la plantilla (opcional)
-   */
-  async sendMembershipExpirationNotification(
-    email: string,
-    name: string,
-    expirationDate: Date,
-    membershipType: string,
-    userId?: string,
-    membershipId?: string,
-    templateId?: string,
-  ): Promise<boolean> {
-    try {
-      // Buscar plantilla personalizada o usar mensaje predeterminado
-      let subject = 'Tu membresía está por expirar - Olimpo Gym';
-      let message = `
-        Hola ${name},
+  // Método auxiliar para extraer parámetros de plantilla de WhatsApp
+  private extractTemplateParameters(message: string, variables: string[] = []): Array<{type: string, text: string}> {
+    const parameters: Array<{type: string, text: string}> = [];
+    
+    // Si no hay variables definidas, devolver el mensaje completo como un parámetro
+    if (!variables || variables.length === 0) {
+      return [{ type: 'text', text: message }];
+    }
+    
+    // Crear una copia del mensaje para trabajar con él
+    let processedMessage = message;
+    
+    // Procesar cada variable y extraer su valor real
+    variables.forEach((variable) => {
+      // Buscar la variable en el mensaje (formato {{variable}})
+      const varPattern = new RegExp(`{{\\s*${variable}\\s*}}`, 'g');
+      
+      // Buscar el valor real que debería reemplazar a la variable
+      // Esto depende de cómo se estructura el mensaje
+      // Por ejemplo, si el mensaje tiene formato "Nombre: Juan, Fecha: 2023-01-01"
+      // y la variable es "nombre", buscaríamos "Nombre: " y extraeríamos "Juan"
+      
+      // Primero verificamos si la variable está en el mensaje
+      if (processedMessage.match(varPattern)) {
+        // Intentar extraer el valor basado en patrones comunes
+        // Por ejemplo: "variable: valor" o "variable = valor"
+        const valuePattern = new RegExp(`${variable}\\s*[:=]\\s*([^,;\\n]+)`, 'i');
+        const valueMatch = processedMessage.match(valuePattern);
         
-        Te informamos que tu membresía ${membershipType} en Olimpo Gym expirará el ${expirationDate.toLocaleDateString()}.
-        
-        Para renovar tu membresía, puedes acercarte a nuestras instalaciones o hacerlo directamente desde nuestra plataforma web.
-        
-        ¡Gracias por ser parte de Olimpo Gym!
-        
-        Saludos,
-        El equipo de Olimpo Gym
-      `;
-
-      // Si se proporciona un ID de plantilla, buscar y usar esa plantilla
-      if (templateId) {
-        const template = await this.getTemplateById(templateId);
-        if (template) {
-          subject = template.subject;
-          message = this.replaceTemplateVariables(template.content, {
-            name,
-            membershipType,
-            expirationDate: expirationDate.toLocaleDateString(),
+        if (valueMatch && valueMatch[1]) {
+          // Extraer el valor y limpiarlo
+          const extractedValue = valueMatch[1].trim();
+          parameters.push({
+            type: 'text',
+            text: extractedValue
+          });
+          
+          // Marcar esta parte como procesada para evitar duplicados
+          processedMessage = processedMessage.replace(valuePattern, '');
+        } else {
+          // Si no podemos extraer el valor con el patrón, usar un valor genérico
+          parameters.push({
+            type: 'text',
+            text: `{{${variable}}}`
           });
         }
       } else {
-        // Buscar plantilla predeterminada para este tipo de notificación
-        const defaultTemplate = await this.getDefaultTemplate(NotificationType.MEMBERSHIP_EXPIRATION);
-        if (defaultTemplate) {
-          subject = defaultTemplate.subject;
-          message = this.replaceTemplateVariables(defaultTemplate.content, {
-            name,
-            membershipType,
-            expirationDate: expirationDate.toLocaleDateString(),
-          });
-        }
+        // Si la variable no está en el mensaje, añadir un valor vacío
+        parameters.push({
+          type: 'text',
+          text: ''
+        });
       }
-
-      // Crear registro de notificación
-      const notificationId = await this.createNotificationRecord(
-        NotificationType.MEMBERSHIP_EXPIRATION,
-        email,
-        message,
-        subject,
-        userId,
-        membershipId,
-        templateId,
-      );
-
-      // Enviar el email
-      const result = await this.sendEmail(
-        email, 
-        subject, 
-        message, 
-        userId, 
-        membershipId, 
-        templateId
-      );
-      
-      return result;
-    } catch (error) {
-      console.error('Error al enviar notificación de expiración:', error);
-      return false;
-    }
+    });
+    
+    return parameters;
   }
 
   /**
-   * Envía una notificación de renovación de membresía
-   * @param email Correo electrónico del usuario
-   * @param name Nombre del usuario
-   * @param newExpirationDate Nueva fecha de expiración de la membresía
-   * @param membershipType Tipo de membresía
-   * @param userId ID del usuario
-   * @param membershipId ID de la membresía
-   * @param templateId ID de la plantilla (opcional)
+   * Obtiene una plantilla por su ID
+   * @param id ID de la plantilla
    */
-  async sendMembershipRenewalNotification(
-    email: string,
-    name: string,
-    newExpirationDate: Date,
-    membershipType: string,
-    userId?: string,
-    membershipId?: string,
-    templateId?: string,
-  ): Promise<boolean> {
+  async getTemplateById(id: string): Promise<NotificationTemplate | null> {
     try {
-      // Buscar plantilla personalizada o usar mensaje predeterminado
-      let subject = 'Tu membresía ha sido renovada - Olimpo Gym';
-      let message = `
-        Hola ${name},
-        
-        Te informamos que tu membresía ${membershipType} en Olimpo Gym ha sido renovada exitosamente.
-        
-        Tu nueva fecha de expiración es el ${newExpirationDate.toLocaleDateString()}.
-        
-        ¡Gracias por seguir confiando en Olimpo Gym!
-        
-        Saludos,
-        El equipo de Olimpo Gym
-      `;
+      const { data, error } = await this.supabase
+        .from('notification_templates')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-      // Si se proporciona un ID de plantilla, buscar y usar esa plantilla
-      if (templateId) {
-        const template = await this.getTemplateById(templateId);
-        if (template) {
-          subject = template.subject;
-          message = this.replaceTemplateVariables(template.content, {
-            name,
-            membershipType,
-            newExpirationDate: newExpirationDate.toLocaleDateString(),
-          });
-        }
-      } else {
-        // Buscar plantilla predeterminada para este tipo de notificación
-        const defaultTemplate = await this.getDefaultTemplate(NotificationType.MEMBERSHIP_RENEWAL);
-        if (defaultTemplate) {
-          subject = defaultTemplate.subject;
-          message = this.replaceTemplateVariables(defaultTemplate.content, {
-            name,
-            membershipType,
-            newExpirationDate: newExpirationDate.toLocaleDateString(),
-          });
-        }
-      }
-
-      // Crear registro de notificación
-      const notificationId = await this.createNotificationRecord(
-        NotificationType.MEMBERSHIP_RENEWAL,
-        email,
-        message,
-        subject,
-        userId,
-        membershipId,
-        templateId,
-      );
-
-      // Enviar el email
-      const result = await this.sendEmail(
-        email, 
-        subject, 
-        message, 
-        userId, 
-        membershipId, 
-        templateId
-      );
-      
-      return result;
+      if (error) throw error;
+      return data;
     } catch (error) {
-      console.error('Error al enviar notificación de renovación:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Envía un correo electrónico masivo a múltiples destinatarios
-   * @param emails Lista de correos electrónicos
-   * @param subject Asunto del correo
-   * @param message Contenido del correo
-   * @param templateId ID de la plantilla (opcional)
-   */
-  async sendBulkEmail(
-    emails: string[],
-    subject: string,
-    message: string,
-    templateId?: string,
-  ): Promise<boolean> {
-    try {
-      // Crear un registro de notificación masiva
-      const bulkNotificationId = await this.createNotificationRecord(
-        NotificationType.BULK_EMAIL,
-        emails.join(','),
-        message,
-        subject,
-        undefined,
-        undefined,
-        templateId,
-      );
-
-      // Aquí podríamos implementar un envío en lotes o utilizar un servicio especializado
-      console.log(`Enviando email masivo a ${emails.length} destinatarios`);
-      console.log(`Asunto: ${subject}`);
-      console.log(`Mensaje: ${message}`);
-
-      // Para una implementación simple, enviamos a cada destinatario individualmente
-      const results = await Promise.all(
-        emails.map((email) => this.sendEmail(email, subject, message, undefined, undefined, templateId)),
-      );
-
-      // Actualizar el estado de la notificación masiva
-      const successRate = results.filter((result) => result).length / results.length;
-      await this.updateNotificationStatus(
-        bulkNotificationId, 
-        successRate >= 0.9 ? NotificationStatus.SENT : NotificationStatus.FAILED,
-        successRate < 0.9 ? `Tasa de éxito: ${successRate * 100}%` : undefined
-      );
-
-      // Consideramos exitoso si al menos el 90% de los envíos fueron exitosos
-      return successRate >= 0.9;
-    } catch (error) {
-      console.error('Error al enviar email masivo:', error);
-      return false;
+      console.error('Error al obtener plantilla por ID:', error);
+      return null;
     }
   }
 
   /**
    * Crea un registro de notificación en la base de datos
    */
-  private async createNotificationRecord(
-    type: NotificationType,
-    recipient: string,
-    message: string,
-    subject?: string,
-    userId?: string,
-    membershipId?: string,
-    templateId?: string,
-  ): Promise<string> {
+  private async createNotificationRecord(params: {
+    type: NotificationType;
+    recipient: string;
+    content: string;
+    subject?: string;
+    status: NotificationStatus;
+    userId?: string;
+    membershipId?: string;
+    templateId?: string;
+  }): Promise<string> {
     try {
       const notificationId = uuidv4();
       const now = new Date().toISOString();
 
-      const notification: Notification = {
+      const notification = {
         id: notificationId,
-        type,
-        recipient,
-        subject,
-        message,
-        status: NotificationStatus.PENDING,
-        created_at: new Date(now),
-        updated_at: new Date(now),
-        user_id: userId,
-        membership_id: membershipId,
-        template_id: templateId,
+        type: params.type,
+        recipient: params.recipient,
+        subject: params.subject,
+        content: params.content,
+        status: params.status,
+        created_at: now,
+        updated_at: now,
+        user_id: params.userId,
+        membership_id: params.membershipId,
+        template_id: params.templateId,
       };
 
       const { error } = await this.supabase
@@ -444,17 +386,17 @@ export class NotificationsService {
     try {
       if (!notificationId) return false;
 
-      const updateData: Partial<Notification> = {
+      const updateData: any = {
         status,
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       };
 
       if (status === NotificationStatus.SENT) {
-        updateData.sent_at = new Date();
+        updateData.sent_at = new Date().toISOString();
       }
 
       if (errorMessage) {
-        updateData.error_message = errorMessage;
+        updateData.error = errorMessage;
       }
 
       const { error } = await this.supabase
@@ -475,28 +417,245 @@ export class NotificationsService {
   }
 
   /**
-   * Obtiene todas las notificaciones enviadas
+   * Obtiene el registro de notificaciones con filtros y paginación
+   * @param params Parámetros de filtrado y paginación
    */
-  async getAllNotifications(): Promise<Notification[]> {
+  async getNotificationLogs(params: {
+    page?: number;
+    limit?: number;
+    type?: NotificationType;
+    status?: NotificationStatus;
+    startDate?: string;
+    endDate?: string;
+    userId?: string;
+    membershipId?: string;
+  }): Promise<{ data: any[]; count: number }> {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        type,
+        status,
+        startDate,
+        endDate,
+        userId,
+        membershipId,
+      } = params;
+
+      // Calcular offset para paginación
+      const offset = (page - 1) * limit;
+
+      // Iniciar la consulta
+      let query = this.supabase
+        .from('notifications')
+        .select('*, users(id, first_name, last_name, email), memberships(id, start_date, end_date)', { count: 'exact' });
+
+      // Aplicar filtros si existen
+      if (type) {
+        query = query.eq('type', type);
+      }
+
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      if (startDate) {
+        query = query.gte('created_at', startDate);
+      }
+
+      if (endDate) {
+        query = query.lte('created_at', endDate);
+      }
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      if (membershipId) {
+        query = query.eq('membership_id', membershipId);
+      }
+
+      // Aplicar paginación y ordenar por fecha de creación (más reciente primero)
+      query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+
+      // Ejecutar la consulta
+      const { data, error, count } = await query;
+
+      if (error) throw error;
+
+      return {
+        data: data || [],
+        count: count || 0,
+      };
+    } catch (error) {
+      console.error('Error al obtener registro de notificaciones:', error);
+      return {
+        data: [],
+        count: 0,
+      };
+    }
+  }
+
+  /**
+   * Obtiene los detalles de una notificación específica por su ID
+   * @param id ID de la notificación
+   */
+  async getNotificationLogById(id: string): Promise<any | null> {
+    try {
+      const { data, error } = await this.supabase
+        .from('notifications')
+        .select('*, users(id, first_name, last_name, email), memberships(id, start_date, end_date), notification_templates(id, name, type)')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error al obtener detalles de notificación:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Envía una notificación de expiración de membresía
+   */
+  async sendMembershipExpirationNotification(params: {
+    email: string;
+    name: string;
+    expirationDate: Date;
+    membershipType: string;
+    userId?: string;
+    membershipId?: string;
+    templateId?: string;
+  }): Promise<boolean> {
+    try {
+      const { email, name, expirationDate, membershipType, userId, membershipId, templateId } = params;
+      
+      // Formatear la fecha de expiración
+      const formattedDate = new Date(expirationDate).toLocaleDateString('es-AR');
+      
+      // Crear el mensaje
+      let message = '';
+      
+      if (templateId) {
+        // Usar plantilla si se proporciona
+        const template = await this.getTemplateById(templateId);
+        if (template) {
+          message = template.content
+            .replace(/{{nombre}}/g, name)
+            .replace(/{{fecha_expiracion}}/g, formattedDate)
+            .replace(/{{tipo_membresia}}/g, membershipType);
+        }
+      } else {
+        // Mensaje predeterminado si no hay plantilla
+        message = `Hola ${name}, tu membresía ${membershipType} expirará el ${formattedDate}. ¡No olvides renovarla para seguir disfrutando de nuestros servicios!`;
+      }
+      
+      // Enviar el email
+      return await this.sendEmail(
+        email,
+        'Recordatorio de expiración de membresía',
+        message,
+        userId,
+        membershipId,
+        templateId
+      );
+    } catch (error) {
+      console.error('Error al enviar notificación de expiración:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Envía una notificación de renovación de membresía
+   */
+  async sendMembershipRenewalNotification(params: {
+    email: string;
+    name: string;
+    newExpirationDate: Date;
+    membershipType: string;
+    userId?: string;
+    membershipId?: string;
+    templateId?: string;
+  }): Promise<boolean> {
+    try {
+      const { email, name, newExpirationDate, membershipType, userId, membershipId, templateId } = params;
+      
+      // Formatear la fecha de expiración
+      const formattedDate = new Date(newExpirationDate).toLocaleDateString('es-AR');
+      
+      // Crear el mensaje
+      let message = '';
+      
+      if (templateId) {
+        // Usar plantilla si se proporciona
+        const template = await this.getTemplateById(templateId);
+        if (template) {
+          message = template.content
+            .replace(/{{nombre}}/g, name)
+            .replace(/{{nueva_fecha_expiracion}}/g, formattedDate)
+            .replace(/{{tipo_membresia}}/g, membershipType);
+        }
+      } else {
+        // Mensaje predeterminado si no hay plantilla
+        message = `¡Hola ${name}! Tu membresía ${membershipType} ha sido renovada exitosamente. La nueva fecha de expiración es el ${formattedDate}. ¡Gracias por confiar en nosotros!`;
+      }
+      
+      // Enviar el email
+      return await this.sendEmail(
+        email,
+        'Confirmación de renovación de membresía',
+        message,
+        userId,
+        membershipId,
+        templateId
+      );
+    } catch (error) {
+      console.error('Error al enviar notificación de renovación:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Envía un email a múltiples destinatarios
+   */
+  async sendBulkEmail(params: {
+    emails: string[];
+    subject: string;
+    message: string;
+    templateId?: string;
+  }): Promise<{ success: number; failed: number }> {
+    const { emails, subject, message, templateId } = params;
+    let success = 0;
+    let failed = 0;
+    
+    // Procesar cada email de forma individual
+    for (const email of emails) {
+      const result = await this.sendEmail(email, subject, message, undefined, undefined, templateId);
+      if (result) {
+        success++;
+      } else {
+        failed++;
+      }
+    }
+    
+    return { success, failed };
+  }
+
+  /**
+   * Obtiene todas las notificaciones
+   */
+  async getAllNotifications(): Promise<any[]> {
     try {
       const { data, error } = await this.supabase
         .from('notifications')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error al obtener notificaciones:', error);
-        return [];
-      }
-
-      return data.map(notification => ({
-        ...notification,
-        created_at: new Date(notification.created_at),
-        updated_at: new Date(notification.updated_at),
-        sent_at: notification.sent_at ? new Date(notification.sent_at) : undefined,
-      }));
+      
+      if (error) throw error;
+      return data || [];
     } catch (error) {
-      console.error('Error al obtener notificaciones:', error);
+      console.error('Error al obtener todas las notificaciones:', error);
       return [];
     }
   }
@@ -504,25 +663,16 @@ export class NotificationsService {
   /**
    * Obtiene las notificaciones de un usuario específico
    */
-  async getUserNotifications(userId: string): Promise<Notification[]> {
+  async getUserNotifications(userId: string): Promise<any[]> {
     try {
       const { data, error } = await this.supabase
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error(`Error al obtener notificaciones del usuario ${userId}:`, error);
-        return [];
-      }
-
-      return data.map(notification => ({
-        ...notification,
-        created_at: new Date(notification.created_at),
-        updated_at: new Date(notification.updated_at),
-        sent_at: notification.sent_at ? new Date(notification.sent_at) : undefined,
-      }));
+      
+      if (error) throw error;
+      return data || [];
     } catch (error) {
       console.error(`Error al obtener notificaciones del usuario ${userId}:`, error);
       return [];
@@ -532,57 +682,65 @@ export class NotificationsService {
   /**
    * Crea una nueva plantilla de notificación
    */
-  async createTemplate(
-    name: string,
-    description: string,
-    type: NotificationType,
-    content: string,
-    variables: string[],
-    subject?: string,
-    isDefault?: boolean,
-    createdBy?: string,
-  ): Promise<NotificationTemplate | null> {
+  async createTemplate(params: {
+    name: string;
+    description: string;
+    type: NotificationType;
+    content: string;
+    variables: string[];
+    subject?: string;
+    isDefault?: boolean;
+    createdBy?: string;
+    whatsapp_template_name?: string;
+  }): Promise<any> {
     try {
-      const templateId = uuidv4();
-      const now = new Date().toISOString();
-
-      const template: NotificationTemplate = {
-        id: templateId,
+      const {
         name,
         description,
         type,
-        subject: subject || '',
         content,
         variables,
-        is_default: isDefault || false,
-        created_at: new Date(now),
-        updated_at: new Date(now),
-        created_by: createdBy || '',
-      };
-
-      // Si esta plantilla es la predeterminada, actualizar las demás plantillas del mismo tipo
+        subject,
+        isDefault = false,
+        createdBy,
+        whatsapp_template_name,
+      } = params;
+      
+      const templateId = uuidv4();
+      const now = new Date().toISOString();
+      
+      // Si esta plantilla será la predeterminada, actualizar las demás del mismo tipo
       if (isDefault) {
-        const { error: updateError } = await this.supabase
+        await this.supabase
           .from('notification_templates')
           .update({ is_default: false })
           .eq('type', type)
           .eq('is_default', true);
-
-        if (updateError) {
-          console.error('Error al actualizar plantillas existentes:', updateError);
-        }
       }
-
-      const { error } = await this.supabase
+      
+      const template = {
+        id: templateId,
+        name,
+        description,
+        type,
+        content,
+        variables,
+        subject,
+        is_default: isDefault,
+        created_at: now,
+        updated_at: now,
+        created_by: createdBy,
+        whatsapp_template_name,
+      };
+      
+      const { data, error } = await this.supabase
         .from('notification_templates')
-        .insert(template);
-
-      if (error) {
-        console.error('Error al crear plantilla:', error);
-        return null;
-      }
-
-      return template;
+        .insert(template)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Error al crear plantilla:', error);
       return null;
@@ -592,169 +750,117 @@ export class NotificationsService {
   /**
    * Obtiene todas las plantillas de notificación
    */
-  async getAllTemplates(): Promise<NotificationTemplate[]> {
+  async getAllTemplates(): Promise<any[]> {
     try {
       const { data, error } = await this.supabase
         .from('notification_templates')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error al obtener plantillas:', error);
-        return [];
-      }
-
-      return data.map(template => ({
-        ...template,
-        created_at: new Date(template.created_at),
-        updated_at: new Date(template.updated_at),
-      }));
+      
+      if (error) throw error;
+      return data || [];
     } catch (error) {
-      console.error('Error al obtener plantillas:', error);
+      console.error('Error al obtener todas las plantillas:', error);
       return [];
     }
   }
 
   /**
-   * Obtiene una plantilla por su ID
+   * Actualiza una plantilla de notificación existente
    */
-  async getTemplateById(templateId: string): Promise<NotificationTemplate | null> {
+  async updateTemplate(id: string, params: {
+    name?: string;
+    description?: string;
+    content?: string;
+    variables?: string[];
+    subject?: string;
+    isDefault?: boolean;
+    whatsapp_template_name?: string;
+  }): Promise<any> {
     try {
-      const { data, error } = await this.supabase
+      const {
+        name,
+        description,
+        content,
+        variables,
+        subject,
+        isDefault,
+        whatsapp_template_name,
+      } = params;
+      
+      // Obtener la plantilla actual para verificar si cambia el estado predeterminado
+      const { data: currentTemplate } = await this.supabase
         .from('notification_templates')
-        .select('*')
-        .eq('id', templateId)
+        .select('type, is_default')
+        .eq('id', id)
         .single();
-
-      if (error) {
-        console.error(`Error al obtener plantilla ${templateId}:`, error);
-        return null;
+      
+      if (!currentTemplate) {
+        throw new Error('Plantilla no encontrada');
       }
-
-      return {
-        ...data,
-        created_at: new Date(data.created_at),
-        updated_at: new Date(data.updated_at),
-      };
-    } catch (error) {
-      console.error(`Error al obtener plantilla ${templateId}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Obtiene la plantilla predeterminada para un tipo de notificación
-   */
-  async getDefaultTemplate(type: NotificationType): Promise<NotificationTemplate | null> {
-    try {
-      const { data, error } = await this.supabase
-        .from('notification_templates')
-        .select('*')
-        .eq('type', type)
-        .eq('is_default', true)
-        .single();
-
-      if (error) {
-        console.error(`Error al obtener plantilla predeterminada para ${type}:`, error);
-        return null;
+      
+      // Si esta plantilla será la predeterminada y no lo era antes, actualizar las demás
+      if (isDefault === true && !currentTemplate.is_default) {
+        await this.supabase
+          .from('notification_templates')
+          .update({ is_default: false })
+          .eq('type', currentTemplate.type)
+          .eq('is_default', true);
       }
-
-      return {
-        ...data,
-        created_at: new Date(data.created_at),
-        updated_at: new Date(data.updated_at),
-      };
-    } catch (error) {
-      console.error(`Error al obtener plantilla predeterminada para ${type}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Actualiza una plantilla existente
-   */
-  async updateTemplate(
-    templateId: string,
-    updates: Partial<NotificationTemplate>,
-  ): Promise<NotificationTemplate | null> {
-    try {
-      // Si esta plantilla se está estableciendo como predeterminada, actualizar las demás
-      if (updates.is_default) {
-        const template = await this.getTemplateById(templateId);
-        if (template) {
-          const { error: updateError } = await this.supabase
-            .from('notification_templates')
-            .update({ is_default: false })
-            .eq('type', template.type)
-            .eq('is_default', true);
-
-          if (updateError) {
-            console.error('Error al actualizar plantillas existentes:', updateError);
-          }
-        }
-      }
-
-      const updateData = {
-        ...updates,
+      
+      const updateData: any = {
         updated_at: new Date().toISOString(),
       };
-
+      
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (content !== undefined) updateData.content = content;
+      if (variables !== undefined) updateData.variables = variables;
+      if (subject !== undefined) updateData.subject = subject;
+      if (isDefault !== undefined) updateData.is_default = isDefault;
+      if (whatsapp_template_name !== undefined) updateData.whatsapp_template_name = whatsapp_template_name;
+      
       const { data, error } = await this.supabase
         .from('notification_templates')
         .update(updateData)
-        .eq('id', templateId)
+        .eq('id', id)
         .select()
         .single();
-
-      if (error) {
-        console.error(`Error al actualizar plantilla ${templateId}:`, error);
-        return null;
-      }
-
-      return {
-        ...data,
-        created_at: new Date(data.created_at),
-        updated_at: new Date(data.updated_at),
-      };
+      
+      if (error) throw error;
+      return data;
     } catch (error) {
-      console.error(`Error al actualizar plantilla ${templateId}:`, error);
+      console.error(`Error al actualizar plantilla ${id}:`, error);
       return null;
     }
   }
 
   /**
-   * Elimina una plantilla
+   * Elimina una plantilla de notificación
    */
-  async deleteTemplate(templateId: string): Promise<boolean> {
+  async deleteTemplate(id: string): Promise<boolean> {
     try {
+      // Verificar si la plantilla es predeterminada
+      const { data: template } = await this.supabase
+        .from('notification_templates')
+        .select('is_default')
+        .eq('id', id)
+        .single();
+      
+      if (template && template.is_default) {
+        throw new Error('No se puede eliminar una plantilla predeterminada');
+      }
+      
       const { error } = await this.supabase
         .from('notification_templates')
         .delete()
-        .eq('id', templateId);
-
-      if (error) {
-        console.error(`Error al eliminar plantilla ${templateId}:`, error);
-        return false;
-      }
-
+        .eq('id', id);
+      
+      if (error) throw error;
       return true;
     } catch (error) {
-      console.error(`Error al eliminar plantilla ${templateId}:`, error);
+      console.error(`Error al eliminar plantilla ${id}:`, error);
       return false;
     }
-  }
-
-  /**
-   * Reemplaza las variables en una plantilla con sus valores correspondientes
-   */
-  private replaceTemplateVariables(template: string, variables: Record<string, string>): string {
-    let result = template;
-    
-    for (const [key, value] of Object.entries(variables)) {
-      const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-      result = result.replace(regex, value);
-    }
-    
-    return result;
   }
 }

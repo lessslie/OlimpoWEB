@@ -9,6 +9,7 @@ export class NotificationTemplate {
   content: string;
   variables: string[]; // Lista de variables que se pueden reemplazar en la plantilla
   is_default: boolean; // Indica si es la plantilla predeterminada para este tipo
+  whatsapp_template_name?: string; // Nombre de la plantilla en WhatsApp Business API
   created_at: Date;
   updated_at: Date;
   created_by: string; // ID del administrador que creó la plantilla

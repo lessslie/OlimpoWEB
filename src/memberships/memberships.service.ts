@@ -273,7 +273,7 @@ export class MembershipsService {
             // Obtener información del usuario
             const { data: userData, error: userError } = await this.supabase
               .from('users')
-              .select('email, full_name, first_name, last_name, phone')
+              .select('id, email, full_name, first_name, last_name, phone')
               .eq('id', membership.user_id)
               .single();
 
@@ -529,7 +529,7 @@ El equipo de Olimpo Gym`,
         try {
           const { data: userData, error: userError } = await this.supabase
             .from('users')
-            .select('email, full_name, first_name, last_name, phone')
+            .select('id, email, full_name, first_name, last_name, phone')
             .eq('id', membership.user_id)
             .single();
 
@@ -547,12 +547,14 @@ El equipo de Olimpo Gym`,
               `${userData.first_name} ${userData.last_name}`.trim();
 
             // Enviar notificación por email
-            await this.notificationsService.sendMembershipExpirationNotification(
-              userData.email,
-              fullName,
-              new Date(membership.end_date),
-              membership.type,
-            );
+            await this.notificationsService.sendMembershipExpirationNotification({
+              email: userData.email,
+              name: fullName,
+              expirationDate: new Date(membership.end_date),
+              membershipType: membership.type,
+              userId: userData.id || undefined,
+              membershipId: membership.id
+            });
 
             console.log(
               `Notificación de expiración enviada por email a ${userData.email}`,
@@ -618,7 +620,7 @@ El equipo de Olimpo Gym`,
           // Obtener información del usuario para la notificación
           const { data: userData, error: userError } = await this.supabase
             .from('users')
-            .select('email, full_name, first_name, last_name, phone')
+            .select('id, email, full_name, first_name, last_name, phone')
             .eq('id', membership.user_id)
             .single();
 
@@ -636,12 +638,14 @@ El equipo de Olimpo Gym`,
               `${userData.first_name} ${userData.last_name}`.trim();
 
             // Enviar notificación por email
-            await this.notificationsService.sendMembershipRenewalNotification(
-              userData.email,
-              fullName,
-              renewedMembership.end_date,
-              renewedMembership.type,
-            );
+            await this.notificationsService.sendMembershipRenewalNotification({
+              email: userData.email,
+              name: fullName,
+              newExpirationDate: renewedMembership.end_date,
+              membershipType: renewedMembership.type,
+              userId: userData.id || undefined,
+              membershipId: renewedMembership.id
+            });
 
             console.log(
               `Notificación de renovación enviada por email a ${userData.email}`,
