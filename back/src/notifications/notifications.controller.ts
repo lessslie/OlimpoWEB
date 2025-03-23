@@ -9,11 +9,11 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
-import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../users/entities/user.entity';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { NotificationsService } from './notifications.service';
 import { NotificationType, NotificationStatus } from './entities/notification.entity';
 
 class SendEmailDto {
@@ -238,22 +238,38 @@ export class NotificationsController {
     @Query('userId') userId?: string,
     @Query('membershipId') membershipId?: string,
   ) {
-    return this.notificationsService.getNotificationLogs({
-      page: +page,
-      limit: +limit,
+    // Crear un objeto de filtros para pasarlo al servicio
+    const filters = {
       type: type as NotificationType,
       status: status as NotificationStatus,
       startDate,
       endDate,
       userId,
       membershipId,
-    });
+    };
+    
+    return this.notificationsService.getNotificationLogs(+page, +limit, filters);
   }
 
   @Get('logs/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async getNotificationLogById(@Param('id') id: string) {
-    return this.notificationsService.getNotificationLogById(id);
+    // Obtener un log específico por su ID
+    try {
+      const { data, error } = await this.notificationsService.supabase
+        .from('notifications')
+        .select('*, users!notifications_user_id_fkey(full_name, email)')
+        .eq('id', id)
+        .single();
+      
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      
+      return { success: true, log: data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 }

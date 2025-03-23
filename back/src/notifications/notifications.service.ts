@@ -2,12 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as sgMail from '@sendgrid/mail';
 import axios from 'axios';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { NotificationType, NotificationStatus } from './entities/notification.entity';
 
 @Injectable()
 export class NotificationsService {
-  private supabase;
+  // Hacer pública la instancia de Supabase para que pueda ser accedida desde el controlador
+  public supabase: SupabaseClient;
 
   constructor(private configService: ConfigService) {
     // Inicializar SendGrid

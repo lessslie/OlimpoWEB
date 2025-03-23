@@ -3,6 +3,9 @@ import { ApiProperty } from '@nestjs/swagger';
 export enum MembershipType {
   MONTHLY = 'monthly',
   KICKBOXING = 'kickboxing',
+  QUARTERLY = 'quarterly',
+  BIANNUAL = 'biannual',
+  ANNUAL = 'annual',
 }
 
 export enum MembershipStatus {
