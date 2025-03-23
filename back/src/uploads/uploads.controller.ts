@@ -10,6 +10,7 @@ import {
   HttpException,
   HttpStatus,
   UseGuards,
+  Body,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -35,7 +36,7 @@ export class UploadsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Subir un archivo' })
+  @ApiOperation({ summary: 'Subir un archivo a Cloudinary' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Archivo subido correctamente' })
   @ApiResponse({ status: 400, description: 'Formato de archivo no válido' })
@@ -53,17 +54,43 @@ export class UploadsController {
       );
     }
 
-    return {
-      filename: file.filename,
-      originalname: file.originalname,
-      size: file.size,
-      mimetype: file.mimetype,
-      path: `/uploads/${file.filename}`,
-    };
+    try {
+      const result = await this.uploadsService.uploadToCloudinary(file);
+      return result;
+    } catch (error) {
+      throw new HttpException(
+        `Error al subir el archivo: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
+  @Delete('cloudinary/:publicId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Eliminar un archivo de Cloudinary' })
+  @ApiResponse({ status: 200, description: 'Archivo eliminado correctamente' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({
+    status: 403,
+    description: 'Prohibido - No tiene permisos suficientes',
+  })
+  @ApiResponse({ status: 404, description: 'Archivo no encontrado' })
+  async deleteFromCloudinary(@Param('publicId') publicId: string) {
+    try {
+      return await this.uploadsService.deleteFromCloudinary(publicId);
+    } catch (error) {
+      throw new HttpException(
+        error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Mantener los métodos antiguos para compatibilidad con el código existente
   @Get(':filename')
-  @ApiOperation({ summary: 'Obtener un archivo' })
+  @ApiOperation({ summary: 'Obtener un archivo local' })
   @ApiResponse({ status: 200, description: 'Archivo encontrado' })
   @ApiResponse({ status: 404, description: 'Archivo no encontrado' })
   async getFile(@Param('filename') filename: string, @Res() res: Response) {
@@ -80,7 +107,7 @@ export class UploadsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Eliminar un archivo' })
+  @ApiOperation({ summary: 'Eliminar un archivo local' })
   @ApiResponse({ status: 200, description: 'Archivo eliminado correctamente' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({
